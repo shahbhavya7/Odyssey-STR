@@ -12,13 +12,12 @@ from pydantic import BaseModel, Field
 class Category(str, Enum):
     """The fixed set of ticket categories."""
 
-    BILLING = "Billing"
-    TECHNICAL = "Technical"
-    ACCOUNT_ACCESS = "Account & Access"
-    BUG = "Bug"
-    FEATURE_REQUEST = "Feature Request"
-    COMPLAINT = "Complaint"
-    GENERAL_INQUIRY = "General Inquiry"
+    BILLING = "Billing & Payments"
+    ACCOUNT = "Account & Access"
+    HOWTO = "How-To / Usage"
+    BUG = "Bug & Outage"
+    FEATURE = "Feature Request"
+    GENERAL = "General / Other"
 
 
 class Priority(str, Enum):
@@ -32,13 +31,13 @@ class Priority(str, Enum):
 class Team(str, Enum):
     """The fixed set of teams a ticket can be assigned to."""
 
-    BILLING_TEAM = "Billing Team"
-    TECHNICAL_SUPPORT = "Technical Support"
-    ACCOUNT_MANAGEMENT = "Account Management"
-    ENGINEERING = "Engineering"
+    BILLING = "Billing Team"
+    ACCOUNT_MGMT = "Account Management"
+    CUSTOMER_SUPP = "Customer Support"
     PRODUCT = "Product"
-    CUSTOMER_SUCCESS = "Customer Success"
-    GENERAL_TRIAGE = "General Triage"
+    FRONTEND = "Frontend / UI-UX"
+    BACKEND = "Backend / API"
+    DEVOPS = "DevOps / Infrastructure"
 
 
 class RoutedTicket(BaseModel):
@@ -74,9 +73,9 @@ def safe_fallback(reason: str) -> RoutedTicket:
     garbage input or a dead model — it just flags it for a human.
     """
     return RoutedTicket(
-        category=Category.GENERAL_INQUIRY,
+        category=Category.GENERAL,
         priority=Priority.MEDIUM,
-        assigned_team=Team.GENERAL_TRIAGE,
+        assigned_team=Team.CUSTOMER_SUPP,
         reasoning=reason[:200],
         confidence=0.0,
         needs_human_review=True,
