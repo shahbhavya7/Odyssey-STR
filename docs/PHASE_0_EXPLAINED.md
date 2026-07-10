@@ -4,8 +4,10 @@
 
 Phase 0 is the foundation of the Smart Ticket Router. We didn't build the AI part yet —
 we built the ground it will stand on: a place to keep secrets safely, a strict definition
-of what a "routed ticket" must look like, and a working connection to the database.
-Doing this first means every later phase plugs into something solid instead of guessing.
+of what a "routed ticket" must look like, and a working connection to the database. We also
+added a **provider switch** — like choosing which kitchen cooks your order — so we can
+develop for free against a local AI model (Ollama) and flip one setting to OpenAI for the
+final demo. Doing this first means every later phase plugs into something solid instead of guessing.
 
 ## b) Every file, explained
 
@@ -32,16 +34,22 @@ Doing this first means every later phase plugs into something solid instead of g
 - **Why it exists:** Without it, the text `"false"` would count as "yes" in Python (any non-empty text does), which would silently turn mock mode on.
 
 **`Settings` (a class)**
-- **What it does:** One tidy box holding every setting the app needs — API key, model name, database address, and so on — each read from the environment with a sensible default. It is "frozen," meaning once created it can't be changed, so no code can accidentally overwrite a setting mid-run.
+- **What it does:** One tidy box holding every setting the app needs — which provider to use, both models' names, the API key, database address, and so on — each read from the environment with a sensible default. It is "frozen," meaning once created it can't be changed, so no code can accidentally overwrite a setting mid-run.
 - **Inputs:** none directly; it reads environment variables.
-- **Output:** a `Settings` object you can ask things like `settings.model`.
+- **Output:** a `Settings` object you can ask things like `settings.provider`.
 - **Why it exists:** So there is exactly one place settings come from. Change `.env`, restart, done.
 
+**`Settings.active_model` (a property — a value that's computed when you ask for it)**
+- **What it does:** Hands back the model name for whichever kitchen is switched on: the Ollama model if `PROVIDER=ollama`, otherwise the OpenAI model.
+- **Inputs:** none (it looks at the settings it already holds).
+- **Output:** a model name (a string), e.g. `qwen2.5:7b`.
+- **Why it exists:** So the rest of the app can ask "which model are we using?" without caring which provider is selected.
+
 **`Settings.use_mock` (a property — a value that's computed when you ask for it)**
-- **What it does:** Answers "should we run without the real AI?" It says yes if you set `MOCK_MODE=true` **or** if there's no API key at all.
+- **What it does:** Answers "should we run without any real AI model?" It says yes if you set `MOCK_MODE=true`, **or** if you picked OpenAI but left the API key blank. Ollama needs no key, so a blank OpenAI key does *not* force mock mode while `PROVIDER=ollama`.
 - **Inputs:** none (it looks at the settings it already holds).
 - **Output:** `True` or `False`.
-- **Why it exists:** So the app always has a way to run — a missing key means "pretend mode," never a crash.
+- **Why it exists:** So the app always has a way to run — a missing OpenAI key means "pretend mode," never a crash.
 
 **`settings` (a variable at the bottom of the file)**
 - **What it does:** The single, ready-made `Settings` object every other file imports and uses.
@@ -120,3 +128,5 @@ Doing this first means every later phase plugs into something solid instead of g
 - **Engine:** SQLAlchemy's connection manager — it knows the database's address and handles the actual wiring.
 - **Session:** one conversation with the database — like a phone call you must hang up when you're done.
 - **Dependency (in FastAPI, coming in Phase 3):** something a request needs handed to it automatically — like room service delivering a fresh database session to each request.
+- **Provider:** which AI backend actually answers our requests. We support two — `ollama` and `openai` — and pick one with the `PROVIDER` setting, like choosing which kitchen cooks your order.
+- **Ollama:** a free tool that runs an AI model on your own computer. It offers an "OpenAI-compatible" doorway, meaning we can talk to it with the same code we'd use for OpenAI — so switching providers is just one setting, not a rewrite.

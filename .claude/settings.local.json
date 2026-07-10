@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(createdb ticketrouter *)",
+      "Bash(psql -d ticketrouter -tAc \"select current_user\")",
+      "Bash(psql -U postgres -d ticketrouter -tAc \"select 1\")",
+      "Bash(.venv/bin/python -m app.db)",
+      "Bash(.venv/bin/python -c \"from app.config import settings; print\\('use_mock =', settings.use_mock\\)\")",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'Phase 0: foundation, config, schema, db setup *)",
+      "Bash(.venv/bin/python -c \"from app.config import settings; from app.schema import RoutedTicket, safe_fallback; print\\(safe_fallback\\('x'\\)\\)\")"
+    ]
+  }
+}
