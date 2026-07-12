@@ -42,6 +42,17 @@ def ping_db() -> bool:
         return False
 
 
+def init_db() -> None:
+    """Create any missing tables. Idempotent — safe to call repeatedly.
+
+    Imports app.models so the ORM models are registered on Base before
+    create_all runs. Never drops or alters existing tables.
+    """
+    import app.models  # noqa: F401  (registers Ticket on Base.metadata)
+
+    Base.metadata.create_all(bind=engine)
+
+
 if __name__ == "__main__":
     if ping_db():
         print("Database connection OK.")
