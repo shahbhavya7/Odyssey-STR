@@ -8,10 +8,18 @@ timing, and turning any failure into a safe fallback dict — it NEVER raises.
 import re
 import time
 
+from langdetect import DetectorFactory, LangDetectException, detect
+
 from app.config import settings
 from app.llm_client import LLMError, route_with_llm
 from app.prompts import PROMPT_VERSION
 from app.schema import RoutedTicket, safe_fallback
+
+# Deterministic language detection (langdetect is random-seeded by default).
+DetectorFactory.seed = 0
+
+# Confidence ceiling applied whenever a reliability guard fires.
+_REVIEW_CONFIDENCE_CAP = 0.4
 
 # PII patterns, redacted before any text leaves for the model.
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -25,6 +33,54 @@ def _redact_pii(text: str) -> str:
     text = _CARD_RE.sub("[CARD]", text)
     text = _PHONE_RE.sub("[PHONE]", text)
     return text
+
+
+# Distinctly-English function words (chosen to avoid collisions with Romance
+# languages, so e.g. "me"/"a"/"no" are deliberately excluded).
+_EN_STOPWORDS = frozenset(
+    {
+        "the", "you", "your", "our", "for", "are", "is", "and", "to", "of", "it",
+        "my", "we", "can", "how", "please", "do", "does", "with", "this", "that",
+        "i", "what", "where", "when", "will", "would", "should", "have", "has",
+    }
+)
+
+
+def _is_non_english(text: str) -> bool:
+    """Best-effort check: is this message not in English?
+
+    Deterministic and precision-oriented. Guards against langdetect's known
+    misfires on short text: a message containing two or more distinctly-English
+    words is treated as English regardless of the detector. One-word messages
+    are skipped (handled by other review rules), and a detection failure is
+    treated as "not sure" rather than forcing a flag.
+    """
+    tokens = re.findall(r"[a-zA-Z']+", text.lower())
+    if len(tokens) < 2:
+        return False
+    if sum(tok in _EN_STOPWORDS for tok in tokens) >= 2:
+        return False
+    try:
+        return detect(text) != "en"
+    except LangDetectException:
+        return False
+
+
+def _apply_review_guards(ticket: RoutedTicket, text: str) -> RoutedTicket:
+    """Force human review for cases the model tends to miss.
+
+    Currently: non-English input. This is the deterministic reliability net —
+    even if the model confidently routed a foreign-language ticket, a human
+    still confirms it. Returns a (possibly) updated copy of the ticket.
+    """
+    if _is_non_english(text):
+        return ticket.model_copy(
+            update={
+                "needs_human_review": True,
+                "confidence": min(ticket.confidence, _REVIEW_CONFIDENCE_CAP),
+            }
+        )
+    return ticket
 
 
 def _to_dict(
@@ -73,6 +129,7 @@ def route_ticket(raw_text: str) -> dict:
 
     try:
         ticket, engine = route_with_llm(redacted)
+        ticket = _apply_review_guards(ticket, redacted)
         return _to_dict(ticket, raw_text, engine, elapsed_ms(), None)
     except LLMError as err:
         fallback = safe_fallback("Routing engine unavailable — escalated to a human.")

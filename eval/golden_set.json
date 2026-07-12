@@ -1,0 +1,362 @@
+[
+  {
+    "id": "G01",
+    "difficulty": "easy",
+    "ticket": "Where can I download a copy of last month's invoice?",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "Low",
+      "assigned_team": "Billing Team",
+      "needs_human_review": false
+    },
+    "notes": "This is an informational billing request with no blocked work."
+  },
+  {
+    "id": "G02",
+    "difficulty": "easy",
+    "ticket": "I lost access to my authenticator app and cannot sign in to my workspace.",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "Medium",
+      "assigned_team": "Account Management",
+      "needs_human_review": false
+    },
+    "notes": "A single user needs account access restored."
+  },
+  {
+    "id": "G03",
+    "difficulty": "easy",
+    "ticket": "How do I create a reusable template for our weekly projects?",
+    "expected": {
+      "category": "How-To / Usage",
+      "priority": "Low",
+      "assigned_team": "Customer Support",
+      "needs_human_review": false
+    },
+    "notes": "The customer is asking how to use an existing capability."
+  },
+  {
+    "id": "G04",
+    "difficulty": "easy",
+    "ticket": "Could you add an option to schedule reports for delivery to Slack?",
+    "expected": {
+      "category": "Feature Request",
+      "priority": "Low",
+      "assigned_team": "Product",
+      "needs_human_review": false
+    },
+    "notes": "This requests a new product capability."
+  },
+  {
+    "id": "G05",
+    "difficulty": "easy",
+    "ticket": "Do you offer onboarding sessions for new enterprise customers?",
+    "expected": {
+      "category": "General / Other",
+      "priority": "Low",
+      "assigned_team": "Customer Support",
+      "needs_human_review": false
+    },
+    "notes": "This is a general service question outside the other categories."
+  },
+  {
+    "id": "G06",
+    "difficulty": "easy",
+    "ticket": "The navigation labels overlap each other when I open the settings page on my phone.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Low",
+      "assigned_team": "Frontend / UI-UX",
+      "needs_human_review": false
+    },
+    "notes": "The visible mobile layout is defective but only cosmetically."
+  },
+  {
+    "id": "G07",
+    "difficulty": "easy",
+    "ticket": "Our Salesforce connection says it synced successfully, but none of today's leads appeared in your app.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Medium",
+      "assigned_team": "Backend / API",
+      "needs_human_review": false
+    },
+    "notes": "A broken integration is failing to transfer data for one customer."
+  },
+  {
+    "id": "G08",
+    "difficulty": "easy",
+    "ticket": "Nobody at our company can load the application; every page has timed out for 20 minutes.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "High",
+      "assigned_team": "DevOps / Infrastructure",
+      "needs_human_review": false
+    },
+    "notes": "A widespread inability to load the app is an active availability outage."
+  },
+  {
+    "id": "G09",
+    "difficulty": "easy",
+    "ticket": "Our renewal card is being declined even though the bank approved it, and the workspace is now locked until payment succeeds.",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "High",
+      "assigned_team": "Billing Team",
+      "needs_human_review": false
+    },
+    "notes": "A payment failure is actively blocking access to the service."
+  },
+  {
+    "id": "G10",
+    "difficulty": "easy",
+    "ticket": "Please change the primary administrator from maya@oldco.com to dev@newco.com.",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "Low",
+      "assigned_team": "Account Management",
+      "needs_human_review": false
+    },
+    "notes": "This is a routine account administration request."
+  },
+  {
+    "id": "G11",
+    "difficulty": "easy",
+    "ticket": "What steps should I follow to export all completed tasks as a CSV?",
+    "expected": {
+      "category": "How-To / Usage",
+      "priority": "Low",
+      "assigned_team": "Customer Support",
+      "needs_human_review": false
+    },
+    "notes": "The customer wants instructions for an existing export workflow."
+  },
+  {
+    "id": "G12",
+    "difficulty": "easy",
+    "ticket": "We would like project owners to be able to archive several projects at once.",
+    "expected": {
+      "category": "Feature Request",
+      "priority": "Low",
+      "assigned_team": "Product",
+      "needs_human_review": false
+    },
+    "notes": "Bulk archiving is a requested product enhancement."
+  },
+  {
+    "id": "G13",
+    "difficulty": "edge",
+    "ticket": "THIS IS EMBARRASSING. The welcome banner uses two different font sizes in the same sentence. Fix it!",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Low",
+      "assigned_team": "Frontend / UI-UX",
+      "needs_human_review": false
+    },
+    "notes": "The angry tone does not raise the priority of a cosmetic display defect."
+  },
+  {
+    "id": "G14",
+    "difficulty": "edge",
+    "ticket": "If you don't build custom emoji reactions, I'm cancelling our subscription next week.",
+    "expected": {
+      "category": "Feature Request",
+      "priority": "Low",
+      "assigned_team": "Product",
+      "needs_human_review": false
+    },
+    "notes": "A churn threat tied only to a feature idea remains Low priority."
+  },
+  {
+    "id": "G15",
+    "difficulty": "edge",
+    "ticket": "I signed in this morning and found another person's name, saved addresses, and recent activity inside my account.",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "High",
+      "assigned_team": "Account Management",
+      "needs_human_review": false
+    },
+    "notes": "Someone else's information appearing in the account is a security issue."
+  },
+  {
+    "id": "G16",
+    "difficulty": "edge",
+    "ticket": "Please explain the unexpected $85 usage charge on our bill. Also, it would be nice to choose a custom invoice color.",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "Medium",
+      "assigned_team": "Billing Team",
+      "needs_human_review": false
+    },
+    "notes": "The disputed charge has greater business impact than the cosmetic feature idea."
+  },
+  {
+    "id": "G17",
+    "difficulty": "edge",
+    "ticket": "Three hours of edits disappeared after refresh, and the header icon is slightly off-center too.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "High",
+      "assigned_team": "Backend / API",
+      "needs_human_review": false
+    },
+    "notes": "Data loss outweighs the cosmetic issue and indicates failed persistence logic."
+  },
+  {
+    "id": "G18",
+    "difficulty": "edge",
+    "ticket": "The usage report says 74 seats are active, but our member list contains only 61. I can still manage the team manually.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Medium",
+      "assigned_team": "Backend / API",
+      "needs_human_review": false
+    },
+    "notes": "Incorrect calculated data is a backend defect with a manual workaround."
+  },
+  {
+    "id": "G19",
+    "difficulty": "edge",
+    "ticket": "The Invite Member button does nothing in Safari, but I was able to send the invitation from Chrome.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Medium",
+      "assigned_team": "Frontend / UI-UX",
+      "needs_human_review": false
+    },
+    "notes": "An unresponsive browser button is a frontend bug with a workaround."
+  },
+  {
+    "id": "G20",
+    "difficulty": "edge",
+    "ticket": "Every screen is taking more than two minutes to open for all 40 people in our organization, so today's operations are stalled.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "High",
+      "assigned_team": "DevOps / Infrastructure",
+      "needs_human_review": false
+    },
+    "notes": "System-wide severe slowness affecting many users is an infrastructure incident."
+  },
+  {
+    "id": "G21",
+    "difficulty": "edge",
+    "ticket": "WHY IS YOUR BILLING SO RIDICULOUS? Just tell me whether annual plans are billed upfront.",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "Low",
+      "assigned_team": "Billing Team",
+      "needs_human_review": false
+    },
+    "notes": "Despite the angry wording, this is only an informational billing question."
+  },
+  {
+    "id": "G22",
+    "difficulty": "edge",
+    "ticket": "We'll move to a competitor unless you let us set a different notification sound for each project.",
+    "expected": {
+      "category": "Feature Request",
+      "priority": "Low",
+      "assigned_team": "Product",
+      "needs_human_review": false
+    },
+    "notes": "The cancellation threat is not connected to a real blocker."
+  },
+  {
+    "id": "G23",
+    "difficulty": "edge",
+    "ticket": "Our legal review is tomorrow. Can you confirm today where customer backups are geographically stored?",
+    "expected": {
+      "category": "General / Other",
+      "priority": "Medium",
+      "assigned_team": "Customer Support",
+      "needs_human_review": false
+    },
+    "notes": "This is a time-sensitive policy question that does not block core product use."
+  },
+  {
+    "id": "G24",
+    "difficulty": "edge",
+    "ticket": "A contractor's invitation expired, so only she cannot join the workspace. We can continue without her today, but need access restored before Friday.",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "Medium",
+      "assigned_team": "Account Management",
+      "needs_human_review": false
+    },
+    "notes": "A single user's access problem is important but not currently blocking the organization."
+  },
+  {
+    "id": "G25",
+    "difficulty": "hard",
+    "ticket": "No entiendo por qué aparece un cargo adicional de 29 euros este mes.",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "Low",
+      "assigned_team": "Billing Team",
+      "needs_human_review": true
+    },
+    "notes": "The message is a non-English billing inquiry and therefore requires review."
+  },
+  {
+    "id": "G26",
+    "difficulty": "hard",
+    "ticket": "Comment puis-je partager un tableau de bord avec un client externe sans lui donner accès au reste du projet ?",
+    "expected": {
+      "category": "How-To / Usage",
+      "priority": "Low",
+      "assigned_team": "Customer Support",
+      "needs_human_review": true
+    },
+    "notes": "This is a non-English usage question and must be flagged for review."
+  },
+  {
+    "id": "G27",
+    "difficulty": "hard",
+    "ticket": "zorp 44?? blim blim account maybe ###",
+    "expected": {
+      "category": "General / Other",
+      "priority": "Low",
+      "assigned_team": "Customer Support",
+      "needs_human_review": true
+    },
+    "notes": "The gibberish provides no reliable routing signal."
+  },
+  {
+    "id": "G28",
+    "difficulty": "hard",
+    "ticket": "Calendar sync broken.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Medium",
+      "assigned_team": "Backend / API",
+      "needs_human_review": true
+    },
+    "notes": "Something is broken, but the engineering layer and exact impact are unclear."
+  },
+  {
+    "id": "G29",
+    "difficulty": "hard",
+    "ticket": "I can't get into the advanced reports. Is this an access setting or something missing from our plan?",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "Medium",
+      "assigned_team": "Account Management",
+      "needs_human_review": true
+    },
+    "notes": "The symptom blocks one user but is ambiguous between access and billing entitlement."
+  },
+  {
+    "id": "G30",
+    "difficulty": "hard",
+    "ticket": "When I rename a workspace, the new name vanishes after reload, and the old name is also clipped in the sidebar.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Medium",
+      "assigned_team": "Backend / API",
+      "needs_human_review": true
+    },
+    "notes": "Persistence and display defects are co-equal, so the backend route requires human review."
+  }
+]
