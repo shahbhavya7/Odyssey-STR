@@ -1,4 +1,4 @@
-# Phase 1, Explained (for complete beginners)
+# Phase 1, Explained 
 
 ## a) What Phase 1 does, and why the prompt is the most important part
 

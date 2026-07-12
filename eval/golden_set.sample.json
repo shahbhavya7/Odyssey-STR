@@ -1,0 +1,38 @@
+[
+  {
+    "id": "S01",
+    "difficulty": "easy",
+    "ticket": "Please cancel my subscription before the next billing cycle.",
+    "expected": {
+      "category": "Billing & Payments",
+      "priority": "Medium",
+      "assigned_team": "Billing Team",
+      "needs_human_review": false
+    },
+    "notes": "Plain billing request, not blocking."
+  },
+  {
+    "id": "S02",
+    "difficulty": "edge",
+    "ticket": "I am LIVID. The spacing between your buttons is ugly and unprofessional.",
+    "expected": {
+      "category": "Bug & Outage",
+      "priority": "Low",
+      "assigned_team": "Frontend / UI-UX",
+      "needs_human_review": false
+    },
+    "notes": "Angry tone + cosmetic UI defect -> Low, tone must not raise priority."
+  },
+  {
+    "id": "S03",
+    "difficulty": "hard",
+    "ticket": "je n'arrive pas a me connecter a mon compte",
+    "expected": {
+      "category": "Account & Access",
+      "priority": "Medium",
+      "assigned_team": "Account Management",
+      "needs_human_review": true
+    },
+    "notes": "Non-English (French) -> flag for review even if meaning is clear."
+  }
+]
