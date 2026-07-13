@@ -56,32 +56,30 @@ The interesting part isn't calling an LLM — anyone can do that. It's the **rel
 One core service is the hub: the UI and API are thin, all reliability logic lives in `route_ticket()`, and **every failure branch converges on the same safe fallback** — which is why nothing downstream can crash. Solid lines are the happy path; dashed lines are failure branches.
 
 ```mermaid
-flowchart LR
-    U["🖥️ Streamlit UI"] -->|POST /tickets| A["🚪 FastAPI<br/>thin endpoints"]
-    A --> C{"🧠 route_ticket()<br/>the core"}
+flowchart TB
+    U["🖥️ Streamlit UI"] -->|POST /tickets| A["🚪 FastAPI · thin endpoints"]
+    A --> C["🧠 route_ticket() · the core"]
+    C --> G{"input valid &<br/>model returns valid JSON?"}
 
-    C -->|"redact PII · truncate"| L["🤖 LLM client<br/>Ollama ⇄ OpenAI"]
-    P["📝 Prompt v1.2<br/>taxonomy · rubric · few-shot"] -.-> L
+    G -->|"yes — redact PII → LLM temp 0 → validate enums"| OK["✅ RoutedTicket"]
+    G -->|"no — empty · model down · bad JSON · off-taxonomy"| FB["🛟 safe fallback<br/>needs_human_review = true"]
 
-    L -->|valid JSON| V{"✅ validate<br/>enums"}
-    V -->|ok| S["🗄️ save via ORM"]
-    S --> DB[("🐘 Postgres / Neon")]
-    DB --> OK["📤 201 · glass result card"]
-    OK --> U
-
-    C -. "empty input" .-> FB["🛟 safe fallback<br/>needs_human_review = true"]
-    L -. "model down / bad JSON<br/>(after retry + repair)" .-> FB
-    V -. "off-taxonomy value" .-> FB
+    OK --> S["🗄️ save via ORM"]
     FB --> S
+    S --> DB[("🐘 Postgres / Neon")]
+    S -. "database down" .-> E["⚠️ clean 503 · no stack trace"]
 
-    S -. "database down" .-> E["⚠️ clean 503<br/>(no stack trace)"]
+    DB --> R["📤 201 · glass result card"]
+    R --> U
     E --> U
 
     classDef core fill:#2a2140,stroke:#8A5CF6,stroke-width:2px,color:#fff;
     classDef fail fill:#3a2320,stroke:#E8845B,color:#fff;
-    class C,P core;
+    class C core;
     class FB,E fail;
 ```
+
+_The LLM step uses **Prompt v1.2**; a bad response is retried and repaired before it ever falls back._
 
 ### Request lifecycle
 
@@ -111,16 +109,26 @@ Full write-up: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 
 ## The taxonomy
 
-| Categories | Priorities | Teams |
-|------------|-----------|-------|
-| Billing & Payments | 🔴 High | Billing Team · Account Management |
-| Account & Access | 🟠 Medium | Customer Support · Product |
-| How-To / Usage | 🟢 Low | Frontend / UI-UX · Backend / API |
-| Bug & Outage | | DevOps / Infrastructure |
-| Feature Request | | |
-| General / Other | | |
+Every ticket lands in one **category**, which routes to one owning **team**:
 
-**Priority is by business impact, not tone** — an angry message about a typo is still Low; a calm "all my data vanished" is High. Bugs sub-route by *symptom*: visible → Frontend, logic/data → Backend, availability → DevOps.
+| Category | Routes to |
+|---|---|
+| Billing & Payments | Billing Team |
+| Account & Access | Account Management |
+| How-To / Usage | Customer Support |
+| Feature Request | Product |
+| General / Other | Customer Support |
+| Bug & Outage | Engineering — sub-routed by symptom ↓ |
+
+**Bug & Outage** is split across three engineering teams by the *symptom*:
+
+| Symptom | Team |
+|---|---|
+| Visible — layout, styling, typos, unresponsive buttons | Frontend / UI-UX |
+| Logic / data — 500s, wrong data, failed integrations | Backend / API |
+| Availability — outage, timeouts, won't load at all | DevOps / Infrastructure |
+
+**Priority** — 🔴 High · 🟠 Medium · 🟢 Low — is judged by **business impact, not tone**. An angry message about a typo is still Low; a calm "all my data vanished" is High.
 
 ---
 
