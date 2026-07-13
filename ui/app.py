@@ -4,8 +4,11 @@ A thin dining room over the API kitchen: this app only calls the HTTP API and
 renders the results. It never touches the database or the routing logic directly.
 """
 
+import io
+import json
 import os
 import sys
+from pathlib import Path
 
 # Ensure the project root is importable when run via `streamlit run ui/app.py`.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -26,6 +29,7 @@ from ui.components import (  # noqa: E402
     render_hero,
     result_card,
     stat_cards,
+    time_saved_panel,
 )
 from ui.theme import inject_theme  # noqa: E402
 
@@ -54,6 +58,38 @@ EXAMPLES = [
     "Your whole site has been down for the last hour.",
     "Please add a dark mode.",
 ]
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+
+
+def _read_json(path: Path) -> dict | None:
+    """Load a small JSON file, returning None if it's missing or unreadable."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _extract_tickets(uploaded, pasted: str) -> list[str]:
+    """Turn an upload or pasted text into a clean list of ticket messages.
+
+    A .csv is parsed properly: the 'text' column is used when present, otherwise
+    the last column (so an [id, text] file routes the message, not the id). A
+    .txt (or pasted text) is one ticket per line. Never raises on a bad file.
+    """
+    if uploaded is not None:
+        raw = uploaded.getvalue().decode("utf-8", errors="ignore")
+        if uploaded.name.lower().endswith(".csv"):
+            try:
+                df = pd.read_csv(io.StringIO(raw))
+                col = "text" if "text" in df.columns else df.columns[-1]
+                return [str(v).strip() for v in df[col] if str(v).strip()]
+            except Exception:  # noqa: BLE001 - fall back to line splitting
+                pass
+        return [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    if pasted.strip():
+        return [ln.strip() for ln in pasted.splitlines() if ln.strip()]
+    return []
 
 
 def fetch_health() -> dict | None:
@@ -118,20 +154,20 @@ def _summary_strip(results: list[dict]) -> None:
 def page_batch() -> None:
     """Route many tickets at once — the effortless 20-ticket demo."""
     st.subheader("Batch Demo")
-    st.caption("Paste one ticket per line, or upload a .txt/.csv (one per line / first column).")
+    st.caption(
+        "Paste one ticket per line, or upload a .txt / .csv. "
+        "For a CSV, the `text` column is used (try data/sample_tickets.csv)."
+    )
+
+    time_saved_panel(
+        _read_json(DATA_DIR / "manual_baseline.json"),
+        _read_json(DATA_DIR / "ai_timing.json"),
+    )
 
     pasted = st.text_area("Tickets (one per line)", height=160)
     uploaded = st.file_uploader("…or upload a file", type=["txt", "csv"])
 
-    lines: list[str] = []
-    if uploaded is not None:
-        raw = uploaded.getvalue().decode("utf-8", errors="ignore")
-        for line in raw.splitlines():
-            cell = line.split(",")[0].strip() if uploaded.name.endswith(".csv") else line.strip()
-            if cell:
-                lines.append(cell)
-    elif pasted.strip():
-        lines = [ln.strip() for ln in pasted.splitlines() if ln.strip()]
+    lines = _extract_tickets(uploaded, pasted)
 
     if st.button("Route All", type="primary"):
         if not lines:

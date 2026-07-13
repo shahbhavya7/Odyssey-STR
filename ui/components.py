@@ -159,6 +159,57 @@ def stat_cards(stats: list[tuple[str, str, str]]) -> None:
     )
 
 
+def time_saved_panel(manual: dict | None, ai: dict | None) -> None:
+    """Glass panel comparing manual triage time vs the AI router.
+
+    Reads the two numbers already measured by the baseline/timing scripts. If
+    either is missing, shows a friendly "run the scripts" note instead of crashing.
+    """
+    if not manual or not ai:
+        st.markdown(
+            f"<div style='{_GLASS}border-radius:16px;padding:16px 18px;margin:6px 0 16px;"
+            "color:#B4A9C4;font-size:0.9rem;'>"
+            "<strong style='color:#F5F0FB;'>Time Saved</strong> — not measured yet. "
+            "Run <code>python scripts/manual_baseline.py</code> and "
+            "<code>python scripts/ai_timing.py</code> to populate this.</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    manual_s = float(manual.get("avg_seconds_per_ticket", 0) or 0)
+    ai_ms = float(ai.get("avg_ms_per_ticket", 0) or 0)
+    ai_s = ai_ms / 1000.0
+    faster_pct = (100 * (manual_s - ai_s) / manual_s) if manual_s > 0 else 0.0
+    mins_saved_100 = (manual_s - ai_s) * 100 / 60.0
+
+    def _stat(label: str, value: str, hue: str) -> str:
+        return (
+            "<div style='flex:1;min-width:150px;'>"
+            f"<div style='color:#B4A9C4;font-size:0.75rem;'>{html.escape(label)}</div>"
+            f"<div style=\"font-family:'Bricolage Grotesque',sans-serif;font-size:1.5rem;"
+            f"font-weight:700;color:{hue};font-variant-numeric:tabular-nums;"
+            f"margin-top:2px;\">{html.escape(value)}</div></div>"
+        )
+
+    st.markdown(
+        f"<div style='{_GLASS}border-radius:18px;padding:18px 20px;margin:6px 0 16px;'>"
+        "<div style=\"font-family:'Bricolage Grotesque',sans-serif;color:#F5F0FB;"
+        "font-size:1.05rem;font-weight:700;margin-bottom:12px;\">⏱ Time Saved</div>"
+        "<div style='display:flex;gap:16px;flex-wrap:wrap;'>"
+        f"{_stat('Manual (human)', f'{manual_s:.0f}s / ticket', '#F5A524')}"
+        f"{_stat('AI router', f'{ai_s * 1000:.0f}ms / ticket', '#34E0A1')}"
+        f"{_stat('Faster by', f'{faster_pct:.0f}%', '#B65CFF')}"
+        f"{_stat('Saved / 100 tickets', f'{mins_saved_100:.0f} min', '#E85BC6')}"
+        "</div>"
+        "<div style='color:#776B85;font-size:0.72rem;margin-top:12px;'>"
+        f"Manual baseline measured over {html.escape(str(manual.get('n', '?')))} tickets; "
+        f"AI over {html.escape(str(ai.get('n', '?')))} ({html.escape(str(ai.get('source', '?')))}). "
+        "Excludes queueing/hand-off time, so real-world savings are typically higher."
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def _format_created_at(value: object) -> str:
     """Return an API timestamp in a compact, readable form."""
     text = str(value or "")
