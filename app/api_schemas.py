@@ -52,3 +52,4 @@ class HealthOut(BaseModel):
     provider: str
     model: str
     db_ok: bool
+    db_kind: str

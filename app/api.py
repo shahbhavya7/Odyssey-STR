@@ -60,6 +60,7 @@ def health() -> HealthOut:
         provider=settings.provider,
         model=settings.active_model,
         db_ok=ping_db(),
+        db_kind="neon" if settings.is_serverless_db else "local",
     )
 
 

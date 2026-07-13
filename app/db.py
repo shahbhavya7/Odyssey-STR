@@ -10,7 +10,13 @@ from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import settings
 
-engine = create_engine(settings.database_url)
+# SSL is intentionally configured in DATABASE_URL, so local Postgres and Neon
+# use the same code path (Neon URLs include ?sslmode=require).
+engine = create_engine(
+    settings.database_url,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 

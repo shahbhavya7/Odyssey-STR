@@ -46,6 +46,11 @@ class Settings:
     )
 
     @property
+    def is_serverless_db(self) -> bool:
+        """True when DATABASE_URL points to Neon serverless Postgres."""
+        return "neon.tech" in self.database_url.lower()
+
+    @property
     def active_model(self) -> str:
         """The model name for the currently selected provider."""
         return self.ollama_model if self.provider == "ollama" else self.openai_model
