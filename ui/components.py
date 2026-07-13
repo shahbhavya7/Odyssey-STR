@@ -5,6 +5,7 @@ styled HTML via st.markdown, using the design tokens defined in ui/theme.py.
 """
 
 import html
+from datetime import datetime
 
 import streamlit as st
 
@@ -117,7 +118,7 @@ def render_hero(health: dict | None) -> None:
         "<div><div style=\"font-family:'Space Grotesk',sans-serif;font-size:1.6rem;"
         "font-weight:700;letter-spacing:-0.02em;color:#F4F6FB;\">Smart Ticket Router</div>"
         "<div style='color:#A6ADBD;font-size:0.95rem;margin-top:2px;'>"
-        "Route any support message into category, priority, team, and a reason — instantly."
+        "Route any support message into category, priority, team, and a reason instantly."
         "</div></div>"
         f"<div>{_status_pill(health)}</div></div>",
         unsafe_allow_html=True,
@@ -158,48 +159,103 @@ def stat_cards(stats: list[tuple[str, str, str]]) -> None:
     )
 
 
-def result_card(ticket: dict) -> None:
-    """Render the hero triage card for one routed ticket."""
+def _format_created_at(value: object) -> str:
+    """Return an API timestamp in a compact, readable form."""
+    text = str(value or "")
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text or "—"
+    return parsed.strftime("%d %b %Y, %H:%M")
+
+
+def result_card(ticket: dict, *, embedded: bool = False) -> None:
+    """Render a routed ticket as a clear, responsive result summary."""
     category = html.escape(str(ticket.get("category", "—")))
-    reasoning = html.escape(str(ticket.get("reasoning", "")))
+    raw_ticket = html.escape(str(ticket.get("raw_ticket", "—")))
+    reasoning = html.escape(str(ticket.get("reasoning", "—")))
+    team = html.escape(str(ticket.get("assigned_team", "—")))
     priority = str(ticket.get("priority", "—"))
     review = bool(ticket.get("needs_human_review"))
-
-    banner = ""
-    if review:
-        banner = (
-            f"<div style='background:{_rgba('#FBBF24', 0.12)};"
-            f"border:1px solid {_rgba('#FBBF24', 0.35)};color:#FBBF24;"
-            "padding:10px 14px;border-radius:12px;margin:12px 0;font-weight:600;'>"
-            "&#9888; Needs human review — routed with low confidence.</div>"
-        )
-
-    footer = (
-        "<div style='color:#6B7280;font-size:0.75rem;margin-top:16px;"
-        "border-top:1px solid rgba(255,255,255,0.08);padding-top:10px;"
-        "font-variant-numeric:tabular-nums;'>"
-        f"{html.escape(str(ticket.get('engine', '—')))} · "
-        f"prompt {html.escape(str(ticket.get('prompt_version', '—')))} · "
-        f"{ticket.get('processing_ms', '—')} ms · "
-        f"{html.escape(str(ticket.get('created_at', '—')))} · "
-        f"#{ticket.get('id', '—')}</div>"
+    confidence = max(0.0, min(1.0, float(ticket.get("confidence", 0.0))))
+    confidence_hue = (
+        "#FB7185" if confidence < 0.4 else "#FBBF24" if confidence < 0.7 else "#34D399"
+    )
+    container_style = (
+        "padding:8px 2px 4px;"
+        if embedded
+        else f"{_GLASS}border-radius:20px;padding:22px 24px;margin-bottom:12px;"
     )
 
+    review_banner = ""
+    if review:
+        review_banner = (
+            f"<div style='display:flex;align-items:center;gap:9px;background:{_rgba('#FBBF24', 0.10)};"
+            f"border:1px solid {_rgba('#FBBF24', 0.30)};color:#FBBF24;"
+            "padding:10px 13px;border-radius:10px;margin-top:14px;font-size:0.86rem;"
+            "font-weight:600;'>&#9888; Low confidence. Please review this routing.</div>"
+        )
+
+    error_banner = ""
+    if ticket.get("error"):
+        error_banner = (
+            f"<div style='color:#FB7185;font-size:0.8rem;margin-top:10px;'>"
+            f"Routing note: {html.escape(str(ticket['error']))}</div>"
+        )
+
+    verdict = ""
+    if ticket.get("human_verdict"):
+        verdict = (
+            "<div style='margin-top:12px;color:#34D399;font-size:0.82rem;font-weight:600;'>"
+            f"Human verdict: {html.escape(str(ticket['human_verdict']))}</div>"
+        )
+
     card = (
-        f"<div class='glass' style='{_GLASS}border-radius:20px;padding:22px 24px;'>"
-        "<div style='display:flex;align-items:center;justify-content:space-between;"
-        "gap:12px;flex-wrap:wrap;'>"
-        "<div style=\"font-family:'Space Grotesk',sans-serif;font-size:1.45rem;"
-        f"font-weight:700;letter-spacing:-0.02em;color:#F4F6FB;\">{category}</div>"
-        f"<div>{priority_badge(priority)}</div></div>"
-        "<div style='margin-top:12px;display:flex;gap:8px;align-items:center;"
-        "flex-wrap:wrap;'>"
-        f"{team_badge(str(ticket.get('assigned_team', '—')))}{review_badge(review)}</div>"
-        f"{_confidence_html(ticket.get('confidence', 0.0))}"
-        f"{banner}"
-        f"<div style='border-left:3px solid {_rgba('#7C6CFF', 0.7)};padding:8px 14px;"
-        "margin:12px 0 2px;color:#F4F6FB;background:rgba(124,108,255,0.06);"
-        f"border-radius:0 12px 12px 0;'>&ldquo;{reasoning}&rdquo;</div>"
-        f"{footer}</div>"
+        f"<div style='{container_style}overflow-wrap:anywhere;'>"
+        "<div style='display:flex;justify-content:space-between;align-items:flex-start;"
+        "gap:14px;flex-wrap:wrap;'>"
+        "<div><div style='color:#7C6CFF;font-size:0.72rem;font-weight:700;"
+        "text-transform:uppercase;'>"
+        f"Ticket #{html.escape(str(ticket.get('id', '—')))}</div>"
+        "<div style=\"font-family:'Space Grotesk',sans-serif;font-size:1.35rem;"
+        f"font-weight:700;letter-spacing:0;color:#F4F6FB;margin-top:3px;\">{category}</div></div>"
+        "<div style='display:flex;gap:7px;align-items:center;flex-wrap:wrap;'>"
+        f"{priority_badge(priority)}{review_badge(review)}</div></div>"
+        "<div style='margin-top:16px;padding:13px 15px;background:rgba(255,255,255,0.035);"
+        "border:1px solid rgba(255,255,255,0.08);border-radius:12px;'>"
+        "<div style='color:#6B7280;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Customer message</div>"
+        f"<div style='color:#F4F6FB;font-size:0.95rem;line-height:1.5;margin-top:5px;'>{raw_ticket}</div>"
+        "</div>"
+        "<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"
+        "gap:10px;margin-top:10px;'>"
+        "<div style='padding:11px 13px;border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:10px;background:rgba(255,255,255,0.025);'>"
+        "<div style='color:#6B7280;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Assigned team</div>"
+        f"<div style='color:#F4F6FB;font-weight:600;margin-top:4px;'>{team}</div></div>"
+        "<div style='padding:11px 13px;border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:10px;background:rgba(255,255,255,0.025);'>"
+        "<div style='display:flex;justify-content:space-between;gap:10px;'>"
+        "<span style='color:#6B7280;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Confidence</span>"
+        f"<strong style='color:{confidence_hue};font-size:0.82rem;'>{confidence * 100:.0f}%</strong></div>"
+        "<div style='height:6px;background:rgba(255,255,255,0.08);border-radius:999px;"
+        "margin-top:8px;overflow:hidden;'>"
+        f"<div style='height:100%;width:{confidence * 100:.0f}%;background:{confidence_hue};"
+        f"border-radius:999px;box-shadow:0 0 9px {_rgba(confidence_hue, 0.5)};'></div></div></div></div>"
+        "<div style='margin-top:14px;'>"
+        "<div style='color:#6B7280;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Routing rationale</div>"
+        f"<div style='color:#DDE1EA;line-height:1.5;margin-top:5px;'>{reasoning}</div></div>"
+        f"{review_banner}{error_banner}{verdict}"
+        "<div style='display:flex;gap:8px 18px;flex-wrap:wrap;color:#6B7280;"
+        "font-size:0.72rem;margin-top:16px;padding-top:11px;"
+        "border-top:1px solid rgba(255,255,255,0.08);font-variant-numeric:tabular-nums;'>"
+        f"<span>Model&nbsp; {html.escape(str(ticket.get('engine', '—')))}</span>"
+        f"<span>Prompt&nbsp; {html.escape(str(ticket.get('prompt_version', '—')))}</span>"
+        f"<span>Time&nbsp; {html.escape(str(ticket.get('processing_ms', '—')))} ms</span>"
+        f"<span>Created&nbsp; {html.escape(_format_created_at(ticket.get('created_at')))}</span>"
+        "</div></div>"
     )
     st.markdown(card, unsafe_allow_html=True)

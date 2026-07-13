@@ -203,7 +203,7 @@ def page_browse() -> None:
         st.caption(f"{data['count']} result(s)" + (f" · filters: {', '.join(active)}" if active else ""))
         for t in data["items"]:
             with st.expander(f"#{t['id']} · {t['category']} · {t['priority']} · {t['assigned_team']}"):
-                result_card(t)
+                result_card(t, embedded=True)
 
 
 def page_find() -> None:
