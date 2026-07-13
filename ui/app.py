@@ -20,9 +20,21 @@ from ui.api_client import (  # noqa: E402
     get_ticket,
     list_tickets,
 )
-from ui.components import TEAM_COLORS, result_card  # noqa: E402
+from ui.components import (  # noqa: E402
+    TEAM_COLORS,
+    offline_panel,
+    render_hero,
+    result_card,
+    stat_cards,
+)
+from ui.theme import inject_theme  # noqa: E402
 
-st.set_page_config(page_title="Smart Ticket Router", page_icon="🎫", layout="wide")
+st.set_page_config(
+    page_title="Smart Ticket Router",
+    page_icon="🎫",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 CATEGORIES = [
     "Billing & Payments",
@@ -44,27 +56,12 @@ EXAMPLES = [
 ]
 
 
-def render_health() -> bool:
-    """Show a connection indicator in the sidebar. Returns True if the API is up."""
+def fetch_health() -> dict | None:
+    """Return the /health payload, or None if the API is unreachable."""
     try:
-        health = get_health()
+        return get_health()
     except ApiError:
-        st.sidebar.error("🔴 API offline — start it with\n`uvicorn app.api:app --port 8000`")
-        return False
-    db_note = "" if health.get("db_ok") else " · ⚠ DB down"
-    st.sidebar.success(
-        f"🟢 API connected · {health.get('provider')}:{health.get('model')}{db_note}"
-    )
-    return True
-
-
-def offline_banner() -> None:
-    """Full-width banner shown on a page when the API is unreachable."""
-    st.error(
-        "The API is offline. Start it in another terminal:\n\n"
-        "`uvicorn app.api:app --reload --port 8000`\n\n"
-        "then reload this page."
-    )
+        return None
 
 
 # --------------------------------------------------------------------------- #
@@ -99,20 +96,23 @@ def page_route() -> None:
 
 
 def _summary_strip(results: list[dict]) -> None:
-    """Show counts by priority, % needing review, and total time."""
+    """Show counts by priority, % needing review, and total time as glass stat cards."""
     total = len(results)
     highs = sum(r["priority"] == "High" for r in results)
     meds = sum(r["priority"] == "Medium" for r in results)
     lows = sum(r["priority"] == "Low" for r in results)
     review = sum(bool(r["needs_human_review"]) for r in results)
     ms = sum(int(r.get("processing_ms") or 0) for r in results)
-    c = st.columns(5)
-    c[0].metric("Tickets", total)
-    c[1].metric("🔴 High", highs)
-    c[2].metric("🟠 Medium", meds)
-    c[3].metric("🟢 Low", lows)
-    c[4].metric("Needs review", f"{(100 * review / total):.0f}%" if total else "0%")
-    st.caption(f"Total routing time: {ms:,} ms ({ms / 1000:.1f} s)")
+    stat_cards(
+        [
+            ("Tickets", str(total), "#F4F6FB"),
+            ("High", str(highs), "#FB7185"),
+            ("Medium", str(meds), "#FBBF24"),
+            ("Low", str(lows), "#34D399"),
+            ("Needs review", f"{(100 * review / total):.0f}%" if total else "0%", "#7C6CFF"),
+            ("Total time", f"{ms / 1000:.1f}s", "#22D3EE"),
+        ]
+    )
 
 
 def page_batch() -> None:
@@ -229,20 +229,23 @@ def page_find() -> None:
 # --------------------------------------------------------------------------- #
 def main() -> None:
     """App shell: header, sidebar nav, and health-gated page routing."""
-    st.title("🎫 Smart Ticket Router")
-    st.caption("Read any support message → category, priority, team, and a reason — instantly.")
+    inject_theme()
+    health = fetch_health()
+    render_hero(health)
 
-    api_up = render_health()
+    st.sidebar.markdown("#### Navigate")
     pages = {
         "Route a Ticket": page_route,
         "Batch Demo": page_batch,
         "Browse & Search": page_browse,
         "Find by ID": page_find,
     }
-    choice = st.sidebar.radio("Navigate", list(pages.keys()))
+    choice = st.sidebar.radio(
+        "Navigate", list(pages.keys()), label_visibility="collapsed"
+    )
 
-    if not api_up:
-        offline_banner()
+    if health is None:
+        offline_panel()
         return
     pages[choice]()
 
