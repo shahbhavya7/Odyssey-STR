@@ -20,7 +20,7 @@ from app.repository import get_ticket, list_tickets, route_and_save
 
 logger = logging.getLogger("ticket_router.api")
 
-app = FastAPI(title="Smart Ticket Router", version="0.3.0")
+app = FastAPI(title="Escalio", version="0.3.0")
 
 # Permissive CORS so the Phase 4 Streamlit app can call this locally.
 # NOTE: lock this down to specific origins in production.

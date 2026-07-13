@@ -9,16 +9,16 @@ import streamlit as st
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg-0:#08090D; --bg-1:#0E1017;
-  --accent:#7C6CFF; --accent-hi:#9A6CFF; --accent-2:#22D3EE;
-  --text-1:#F4F6FB; --text-2:#A6ADBD; --text-3:#6B7280;
+  --bg-0:#0A0710; --bg-1:#140E1C;
+  --accent:#B65CFF; --accent-hi:#E85BC6; --accent-2:#F5A524;
+  --text-1:#F5F0FB; --text-2:#B4A9C4; --text-3:#776B85;
   --border:rgba(255,255,255,0.10);
   --glass-bg:rgba(255,255,255,0.045);
   --glass-shadow:0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08);
-  --pri-high:#FB7185; --pri-med:#FBBF24; --pri-low:#34D399;
+  --pri-high:#FF5C72; --pri-med:#F5A524; --pri-low:#34E0A1;
   --r-card:20px; --r-input:14px; --r-pill:999px;
   --ease:160ms ease;
 }
@@ -34,9 +34,9 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"] {
 .stApp::before {
   content:""; position:fixed; inset:-10%; z-index:0; pointer-events:none;
   background:
-    radial-gradient(46vw 46vw at 14% 8%, rgba(109,94,247,0.22), transparent 60%),
-    radial-gradient(42vw 42vw at 86% 18%, rgba(34,211,238,0.16), transparent 60%),
-    radial-gradient(48vw 48vw at 62% 96%, rgba(236,72,153,0.12), transparent 62%);
+    radial-gradient(46vw 46vw at 14% 8%, rgba(182,92,255,0.22), transparent 60%),
+    radial-gradient(42vw 42vw at 86% 18%, rgba(232,91,198,0.16), transparent 60%),
+    radial-gradient(50vw 50vw at 62% 96%, rgba(245,165,36,0.10), transparent 62%);
   filter:blur(30px); animation:drift 24s ease-in-out infinite alternate;
 }
 .stApp::after {
@@ -60,8 +60,8 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"] {
 [data-testid="stHeader"], [data-testid="stToolbar"] { background:transparent; }
 
 /* ---- Typography ---- */
-h1 { font-family:'Space Grotesk',sans-serif; font-weight:700; letter-spacing:-0.02em; }
-h2, h3 { font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing:-0.02em; color:var(--text-1); }
+h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:800; letter-spacing:-0.02em; }
+h2, h3 { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; letter-spacing:-0.02em; color:var(--text-1); }
 .stApp p, .stApp label, .stApp span, .stApp li { color:var(--text-2); }
 
 /* ---- Glass utility ---- */
@@ -95,9 +95,9 @@ h2, h3 { font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing
 [data-testid="stSidebar"] [role="radiogroup"] > label [data-testid="stMarkdownContainer"] { display:block !important; }
 [data-testid="stSidebar"] [role="radiogroup"] > label [data-testid="stMarkdownContainer"] p { color:inherit !important; margin:0; }
 [data-testid="stSidebar"] [role="radiogroup"] > label:has(input:checked) {
-  background:rgba(124,108,255,0.12); color:var(--text-1);
-  border-color:rgba(124,108,255,0.35);
-  box-shadow:inset 3px 0 0 var(--accent), 0 0 0 3px rgba(124,108,255,0.10);
+  background:rgba(182,92,255,0.12); color:var(--text-1);
+  border-color:rgba(182,92,255,0.35);
+  box-shadow:inset 3px 0 0 var(--accent), 0 0 0 3px rgba(182,92,255,0.10);
   font-weight:600;
 }
 [data-testid="stSidebar"] [role="radiogroup"] > label p { color:inherit !important; font-weight:inherit; }
@@ -111,15 +111,15 @@ h2, h3 { font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing
 }
 .stButton > button:hover, .stDownloadButton > button:hover {
   border-color:var(--accent); color:#fff; transform:translateY(-2px);
-  box-shadow:0 8px 22px rgba(124,108,255,0.22);
+  box-shadow:0 8px 22px rgba(182,92,255,0.22);
 }
 .stButton > button[kind="primary"], [data-testid="stBaseButton-primary"] {
   background:linear-gradient(135deg,var(--accent),var(--accent-hi));
-  border:none; color:#fff; box-shadow:0 4px 18px rgba(124,108,255,0.35);
+  border:none; color:#fff; box-shadow:0 4px 18px rgba(182,92,255,0.35);
 }
 .stButton > button[kind="primary"]:hover, [data-testid="stBaseButton-primary"]:hover {
   filter:brightness(1.07); transform:translateY(-2px);
-  box-shadow:0 10px 28px rgba(124,108,255,0.5);
+  box-shadow:0 10px 28px rgba(182,92,255,0.5);
 }
 
 /* ---- Inputs: dark glass fields with accent focus ---- */
@@ -135,7 +135,7 @@ h2, h3 { font-family:'Space Grotesk',sans-serif; font-weight:600; letter-spacing
 .stTextArea textarea:focus, .stTextInput input:focus, .stNumberInput input:focus,
 [data-baseweb="select"] > div:focus-within {
   border-color:var(--accent) !important;
-  box-shadow:0 0 0 3px rgba(124,108,255,0.25) !important;
+  box-shadow:0 0 0 3px rgba(182,92,255,0.25) !important;
 }
 
 /* ---- Expander, file uploader, dataframe, progress ---- */

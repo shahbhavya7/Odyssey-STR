@@ -1,4 +1,4 @@
-"""Smart Ticket Router — Streamlit UI.
+"""Escalio — Streamlit UI.
 
 A thin dining room over the API kitchen: this app only calls the HTTP API and
 renders the results. It never touches the database or the routing logic directly.
@@ -30,8 +30,8 @@ from ui.components import (  # noqa: E402
 from ui.theme import inject_theme  # noqa: E402
 
 st.set_page_config(
-    page_title="Smart Ticket Router",
-    page_icon="🎫",
+    page_title="Escalio",
+    page_icon="🧭",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -105,12 +105,12 @@ def _summary_strip(results: list[dict]) -> None:
     ms = sum(int(r.get("processing_ms") or 0) for r in results)
     stat_cards(
         [
-            ("Tickets", str(total), "#F4F6FB"),
-            ("High", str(highs), "#FB7185"),
-            ("Medium", str(meds), "#FBBF24"),
-            ("Low", str(lows), "#34D399"),
-            ("Needs review", f"{(100 * review / total):.0f}%" if total else "0%", "#7C6CFF"),
-            ("Total time", f"{ms / 1000:.1f}s", "#22D3EE"),
+            ("Tickets", str(total), "#F5F0FB"),
+            ("High", str(highs), "#FF5C72"),
+            ("Medium", str(meds), "#F5A524"),
+            ("Low", str(lows), "#34E0A1"),
+            ("Needs review", f"{(100 * review / total):.0f}%" if total else "0%", "#B65CFF"),
+            ("Total time", f"{ms / 1000:.1f}s", "#E85BC6"),
         ]
     )
 

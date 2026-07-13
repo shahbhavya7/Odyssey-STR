@@ -1,4 +1,4 @@
-# Smart Ticket Router — Project Plan
+# Escalio — Project Plan
 
 **Mission:** Read any support message and output `category`, `priority` (High/Medium/Low),
 `assigned_team`, and a one-line `reasoning` as structured JSON — reliably.

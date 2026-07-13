@@ -2,7 +2,7 @@
 
 ## a) What we built in Phase 0 and why
 
-Phase 0 is the foundation of the Smart Ticket Router. We didn't build the AI part yet —
+Phase 0 is the foundation of the Escalio. We didn't build the AI part yet —
 we built the ground it will stand on: a place to keep secrets safely, a strict definition
 of what a "routed ticket" must look like, and a working connection to the database. We also
 added a **provider switch** — like choosing which kitchen cooks your order — so we can
