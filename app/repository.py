@@ -45,11 +45,35 @@ def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
     return db.get(Ticket, ticket_id)
 
 
-def list_tickets(db: Session, limit: int = 20, offset: int = 0) -> list[Ticket]:
-    """Return recent tickets, newest first."""
+def list_tickets(
+    db: Session,
+    limit: int = 20,
+    offset: int = 0,
+    *,
+    priority: str | None = None,
+    team: str | None = None,
+    category: str | None = None,
+    needs_review: bool | None = None,
+    q: str | None = None,
+) -> list[Ticket]:
+    """Return recent tickets, newest first, with optional filters.
+
+    All filters are optional and additive; when none are given the behaviour is
+    unchanged. Uses ORM filters only (q is a case-insensitive substring match).
+    """
+    stmt = select(Ticket)
+    if priority is not None:
+        stmt = stmt.where(Ticket.priority == priority)
+    if team is not None:
+        stmt = stmt.where(Ticket.assigned_team == team)
+    if category is not None:
+        stmt = stmt.where(Ticket.category == category)
+    if needs_review is not None:
+        stmt = stmt.where(Ticket.needs_human_review == needs_review)
+    if q:
+        stmt = stmt.where(Ticket.raw_ticket.ilike(f"%{q}%"))
     stmt = (
-        select(Ticket)
-        .order_by(Ticket.created_at.desc(), Ticket.id.desc())
+        stmt.order_by(Ticket.created_at.desc(), Ticket.id.desc())
         .limit(limit)
         .offset(offset)
     )
