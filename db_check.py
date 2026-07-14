@@ -24,8 +24,8 @@ def main() -> None:
     db = SessionLocal()
     try:
         print("Step 3: route + save a ticket ...")
-        ticket = route_and_save(db, "I was charged twice, refund please")
-        print(f"  saved id = {ticket.id}")
+        ticket, is_duplicate = route_and_save(db, "I was charged twice, refund please")
+        print(f"  saved id = {ticket.id} (duplicate={is_duplicate})")
         print("  row: " + json.dumps(ticket.to_dict(), indent=2, ensure_ascii=False))
 
         print(f"Step 4: fetch id {ticket.id} back ...")

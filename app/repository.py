@@ -45,6 +45,22 @@ def get_ticket(db: Session, ticket_id: int) -> Ticket | None:
     return db.get(Ticket, ticket_id)
 
 
+def find_ticket_by_text(db: Session, raw_text: str) -> Ticket | None:
+    """Return the earliest existing ticket whose raw text matches exactly, else None.
+
+    Used to detect duplicate submissions before routing again. Matches on the
+    exact stored `raw_ticket` (the original message) and returns the oldest hit,
+    so callers always point back to the first row that ever held this text.
+    """
+    stmt = (
+        select(Ticket)
+        .where(Ticket.raw_ticket == raw_text)
+        .order_by(Ticket.id.asc())
+        .limit(1)
+    )
+    return db.scalars(stmt).first()
+
+
 def list_tickets(
     db: Session,
     limit: int = 20,
@@ -80,11 +96,20 @@ def list_tickets(
     return list(db.scalars(stmt).all())
 
 
-def route_and_save(db: Session, raw_text: str) -> Ticket:
-    """Route a raw ticket and persist the result — the one call the API will use.
+def route_and_save(db: Session, raw_text: str) -> tuple[Ticket, bool]:
+    """Route a raw ticket and persist it — the one call the API will use.
 
-    route_ticket() always returns a valid dict (a safe fallback even on model
-    failure), so whatever it produces — including the error field — is saved.
+    De-duplicates first: if an exact copy of this text was already routed, the
+    existing row is returned untouched (no second model call, no new row). Only
+    genuinely new text is routed and saved.
+
+    Returns (ticket, is_duplicate) so the caller can tell a fresh insert from a
+    match. route_ticket() always returns a valid dict (a safe fallback even on
+    model failure), so whatever it produces — including the error field — is saved.
     """
+    existing = find_ticket_by_text(db, raw_text)
+    if existing is not None:
+        return existing, True
+
     result = route_ticket(raw_text)
-    return save_ticket(db, result)
+    return save_ticket(db, result), False

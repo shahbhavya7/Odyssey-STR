@@ -7,7 +7,7 @@ session is injected via Depends(get_db) — endpoints never open their own sessi
 
 import logging
 
-from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import InterfaceError, OperationalError
@@ -65,15 +65,23 @@ def health() -> HealthOut:
 
 
 @app.post("/tickets", response_model=TicketOut, status_code=201)
-def create_ticket(body: TicketCreate, db: Session = Depends(get_db)) -> dict:
+def create_ticket(
+    body: TicketCreate, response: Response, db: Session = Depends(get_db)
+) -> dict:
     """Route a raw message and save it, returning the full classified row at once.
+
+    De-duplicates on exact text: if this message was already routed, the existing
+    row is returned with 200 and duplicate=true (no second model call). Genuinely
+    new text is routed and saved with 201.
 
     The LLM failing needs no special handling here: route_ticket() always returns a
     valid fallback dict, so this still returns 201 with needs_human_review=true and a
     populated error field. Only a DB failure escalates (to the 503 handler above).
     """
-    ticket = route_and_save(db, body.text)
-    return ticket.to_dict()
+    ticket, is_duplicate = route_and_save(db, body.text)
+    if is_duplicate:
+        response.status_code = 200
+    return {**ticket.to_dict(), "duplicate": is_duplicate}
 
 
 @app.get("/tickets/{ticket_id}", response_model=TicketOut)

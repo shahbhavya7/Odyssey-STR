@@ -36,6 +36,11 @@ class TicketOut(BaseModel):
     error: str | None
     human_verdict: str | None
     created_at: str
+    duplicate: bool = Field(
+        default=False,
+        description="True when this row already existed and was returned as-is "
+        "(the submitted text was an exact duplicate).",
+    )
 
 
 class TicketListOut(BaseModel):
