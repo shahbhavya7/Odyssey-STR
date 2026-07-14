@@ -96,20 +96,31 @@ def list_tickets(
     return list(db.scalars(stmt).all())
 
 
-def route_and_save(db: Session, raw_text: str) -> tuple[Ticket, bool]:
-    """Route a raw ticket and persist it — the one call the API will use.
+def route_and_save(db: Session, raw_text: str) -> dict:
+    """Route a raw message and persist it if (and only if) it is a real ticket.
 
-    De-duplicates first: if an exact copy of this text was already routed, the
-    existing row is returned untouched (no second model call, no new row). Only
-    genuinely new text is routed and saved.
+    The one call the API uses. Returns a dict that always carries `is_ticket`,
+    `stored`, `duplicate`, and `id` so the caller knows what happened:
 
-    Returns (ticket, is_duplicate) so the caller can tell a fresh insert from a
-    match. route_ticket() always returns a valid dict (a safe fallback even on
-    model failure), so whatever it produces — including the error field — is saved.
+      - Non-ticket (gibberish / empty): NOT saved. stored=False, id=None. The
+        rejected result (reasoning only, null routing fields) is returned as-is.
+      - Duplicate real ticket: the existing row is returned untouched (no second
+        model call, no new row). stored=True, duplicate=True.
+      - New real ticket: routed, saved, and the fresh row returned. stored=True.
+
+    route_ticket() never raises, so a model outage still yields a valid ticket
+    (safe fallback) which IS stored and flagged for review.
     """
+    result = route_ticket(raw_text)
+
+    # Not a real support request — show it, but never store it.
+    if not result["is_ticket"]:
+        return {**result, "stored": False, "duplicate": False, "id": None}
+
+    # De-duplicate real tickets on exact text.
     existing = find_ticket_by_text(db, raw_text)
     if existing is not None:
-        return existing, True
+        return {**existing.to_dict(), "is_ticket": True, "stored": True, "duplicate": True}
 
-    result = route_ticket(raw_text)
-    return save_ticket(db, result), False
+    saved = save_ticket(db, result)
+    return {**saved.to_dict(), "is_ticket": True, "stored": True, "duplicate": False}

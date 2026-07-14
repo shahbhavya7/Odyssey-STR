@@ -13,15 +13,16 @@ from pydantic import ValidationError
 
 from app.config import settings
 from app.prompts import PROMPT_VERSION, build_messages
-from app.schema import Category, Priority, RoutedTicket, Team
+from app.schema import Category, Priority, Team, TriageResult
 
 
 class LLMError(Exception):
-    """Raised when the model cannot produce a valid RoutedTicket after retries."""
+    """Raised when the model cannot produce a valid TriageResult after retries."""
 
 
 # Keys the model must return; used to build the corrective repair message.
 _REQUIRED_KEYS = (
+    "is_ticket",
     "category",
     "priority",
     "assigned_team",
@@ -46,14 +47,15 @@ def _repair_message() -> dict[str, str]:
         "role": "user",
         "content": (
             f"Your previous reply was not a single valid JSON object. Return ONLY a "
-            f"JSON object with exactly these keys: {keys}. No markdown, no backticks, "
-            f"no extra text."
+            f"JSON object with exactly these keys: {keys}. No extra keys, no markdown, "
+            f"no backticks, no extra text. category, priority, and assigned_team MUST "
+            f"be null when is_ticket is false, and MUST be set when is_ticket is true."
         ),
     }
 
 
-def route_with_llm(ticket_text: str) -> tuple[RoutedTicket, str]:
-    """Route one ticket through the model. Returns (RoutedTicket, engine_name).
+def route_with_llm(ticket_text: str) -> tuple[TriageResult, str]:
+    """Route one ticket through the model. Returns (TriageResult, engine_name).
 
     Retries up to settings.max_retries on network errors, empty content, JSON
     parse errors, or schema-validation errors, appending a corrective message
@@ -81,7 +83,9 @@ def route_with_llm(ticket_text: str) -> tuple[RoutedTicket, str]:
                 raise ValueError("empty content from model")
 
             data = json.loads(content)
-            ticket = RoutedTicket(**data)
+            # Strict validation: extra keys or a self-contradictory is_ticket/routing
+            # combination raise ValidationError -> caught below -> repair/retry.
+            ticket = TriageResult(**data)
             return ticket, engine_name
 
         except (json.JSONDecodeError, ValidationError, ValueError) as err:
@@ -98,6 +102,12 @@ def route_with_llm(ticket_text: str) -> tuple[RoutedTicket, str]:
 
 
 # --- Mock path -----------------------------------------------------------------
+
+# Greeting words that, on their own, mark a message as small talk (mock only).
+_MOCK_GREETINGS = frozenset(
+    {"hi", "hello", "hey", "hiya", "howdy", "yo", "sup", "hola", "greetings",
+     "thanks", "thank", "good", "morning", "afternoon", "evening"}
+)
 
 # Ordered keyword rules: first match wins. Keeps the app usable with no model.
 _MOCK_RULES: list[tuple[tuple[str, ...], Category, Priority, Team]] = [
@@ -119,16 +129,35 @@ _MOCK_RULES: list[tuple[tuple[str, ...], Category, Priority, Team]] = [
 ]
 
 
-def _mock_route(ticket_text: str) -> RoutedTicket:
+def _mock_route(ticket_text: str) -> TriageResult:
     """Deterministic keyword router used when no model is available.
 
-    Not smart — just enough to keep the whole app runnable offline. Ambiguous
-    or unmatched input is flagged for human review.
+    Not smart — just enough to keep the whole app runnable offline. Extremely short
+    input is treated as a non-ticket; ambiguous or unmatched input is flagged for
+    review. (Real gibberish detection is the live model's job — see app/prompts.py.)
     """
     text = ticket_text.lower()
+    if len(ticket_text.strip()) < 3:
+        return TriageResult(
+            is_ticket=False,
+            reasoning="Mock: message too short to be a support request.",
+            confidence=0.0,
+            needs_human_review=False,
+        )
+    # Bare greeting / small talk with no request -> friendly non-ticket.
+    stripped = text.strip().strip("!.?,:; ")
+    first = stripped.split()[0] if stripped.split() else ""
+    if len(stripped.split()) <= 4 and first in _MOCK_GREETINGS:
+        return TriageResult(
+            is_ticket=False,
+            reasoning="Hello! Happy to help — tell us what you need and we'll route it.",
+            confidence=0.0,
+            needs_human_review=False,
+        )
     for keywords, category, priority, team in _MOCK_RULES:
         if any(kw in text for kw in keywords):
-            return RoutedTicket(
+            return TriageResult(
+                is_ticket=True,
                 category=category,
                 priority=priority,
                 assigned_team=team,
@@ -136,7 +165,8 @@ def _mock_route(ticket_text: str) -> RoutedTicket:
                 confidence=0.5,
                 needs_human_review=False,
             )
-    return RoutedTicket(
+    return TriageResult(
+        is_ticket=True,
         category=Category.GENERAL,
         priority=Priority.LOW,
         assigned_team=Team.CUSTOMER_SUPP,

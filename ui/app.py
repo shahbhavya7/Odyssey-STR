@@ -132,12 +132,14 @@ def page_route() -> None:
 
 
 def _summary_strip(results: list[dict]) -> None:
-    """Show counts by priority, % needing review, and total time as glass stat cards."""
-    total = len(results)
-    highs = sum(r["priority"] == "High" for r in results)
-    meds = sum(r["priority"] == "Medium" for r in results)
-    lows = sum(r["priority"] == "Low" for r in results)
-    review = sum(bool(r["needs_human_review"]) for r in results)
+    """Glass stat cards. Counts cover STORED tickets only; rejects shown separately."""
+    stored = [r for r in results if r.get("is_ticket") is not False]
+    rejected = len(results) - len(stored)
+    total = len(stored)
+    highs = sum(r.get("priority") == "High" for r in stored)
+    meds = sum(r.get("priority") == "Medium" for r in stored)
+    lows = sum(r.get("priority") == "Low" for r in stored)
+    review = sum(bool(r.get("needs_human_review")) for r in stored)
     ms = sum(int(r.get("processing_ms") or 0) for r in results)
     stat_cards(
         [
@@ -145,6 +147,7 @@ def _summary_strip(results: list[dict]) -> None:
             ("High", str(highs), "#FF5C72"),
             ("Medium", str(meds), "#F5A524"),
             ("Low", str(lows), "#34E0A1"),
+            ("Rejected", str(rejected), "#776B85"),
             ("Needs review", f"{(100 * review / total):.0f}%" if total else "0%", "#B65CFF"),
             ("Total time", f"{ms / 1000:.1f}s", "#E85BC6"),
         ]
@@ -186,20 +189,29 @@ def page_batch() -> None:
         bar.empty()
 
         _summary_strip(results)
-        df = pd.DataFrame(
-            [
-                {
-                    "id": r["id"],
+        rows = []
+        for r in results:
+            if r.get("is_ticket") is False:
+                rows.append({
+                    "id": "—",
+                    "ticket": r["raw_ticket"][:60],
+                    "category": "rejected / not stored",
+                    "priority": "🚫",
+                    "team": "—",
+                    "confidence": "—",
+                    "review": "",
+                })
+            else:
+                rows.append({
+                    "id": r.get("id", "—"),
                     "ticket": r["raw_ticket"][:60],
                     "category": r["category"],
                     "priority": f"{PRIORITY_DOT.get(r['priority'], '')} {r['priority']}",
                     "team": r["assigned_team"],
                     "confidence": round(r["confidence"], 2),
                     "review": "⚠" if r["needs_human_review"] else "",
-                }
-                for r in results
-            ]
-        )
+                })
+        df = pd.DataFrame(rows)
         st.dataframe(df, use_container_width=True, hide_index=True)
 
         csv = df.to_csv(index=False).encode("utf-8")

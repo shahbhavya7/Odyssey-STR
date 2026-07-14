@@ -220,8 +220,46 @@ def _format_created_at(value: object) -> str:
     return parsed.strftime("%d %b %Y, %H:%M")
 
 
+def rejected_card(ticket: dict, *, embedded: bool = False) -> None:
+    """Render a non-ticket outcome: reasoning ONLY, muted, clearly not stored.
+
+    This is a normal result (not an error), so it stays on-theme and calm — no
+    category/priority/team badges, no confidence bar, no id.
+    """
+    reasoning = html.escape(str(ticket.get("reasoning", "—")))
+    raw_ticket = html.escape(str(ticket.get("raw_ticket", "—")))
+    container_style = (
+        "padding:8px 2px 4px;"
+        if embedded
+        else f"{_GLASS}border-radius:20px;padding:22px 24px;margin-bottom:12px;opacity:0.92;"
+    )
+    st.markdown(
+        f"<div style='{container_style}overflow-wrap:anywhere;'>"
+        "<div style='display:flex;align-items:center;gap:9px;'>"
+        "<span style='font-size:1.1rem;'>🚫</span>"
+        "<span style=\"font-family:'Bricolage Grotesque',sans-serif;font-size:1.15rem;"
+        "font-weight:700;color:#B4A9C4;\">Not a valid ticket</span></div>"
+        "<div style='margin-top:14px;padding:13px 15px;background:rgba(255,255,255,0.03);"
+        "border:1px solid rgba(255,255,255,0.07);border-radius:12px;'>"
+        "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Message</div>"
+        f"<div style='color:#B4A9C4;font-size:0.92rem;line-height:1.5;margin-top:5px;'>{raw_ticket}</div>"
+        "</div>"
+        "<div style='margin-top:14px;'>"
+        "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Why it was rejected</div>"
+        f"<div style='color:#DDE1EA;line-height:1.5;margin-top:5px;'>{reasoning}</div></div>"
+        "<div style='margin-top:14px;color:#776B85;font-size:0.75rem;font-style:italic;'>"
+        "Not saved to the database.</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def result_card(ticket: dict, *, embedded: bool = False) -> None:
-    """Render a routed ticket as a clear, responsive result summary."""
+    """Render a triage outcome. Non-tickets get the muted rejected card."""
+    if ticket.get("is_ticket") is False or ticket.get("stored") is False:
+        rejected_card(ticket, embedded=embedded)
+        return
     category = html.escape(str(ticket.get("category", "—")))
     raw_ticket = html.escape(str(ticket.get("raw_ticket", "—")))
     reasoning = html.escape(str(ticket.get("reasoning", "—")))

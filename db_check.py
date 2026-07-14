@@ -24,15 +24,17 @@ def main() -> None:
     db = SessionLocal()
     try:
         print("Step 3: route + save a ticket ...")
-        ticket, is_duplicate = route_and_save(db, "I was charged twice, refund please")
-        print(f"  saved id = {ticket.id} (duplicate={is_duplicate})")
-        print("  row: " + json.dumps(ticket.to_dict(), indent=2, ensure_ascii=False))
+        outcome = route_and_save(db, "I was charged twice, refund please")
+        ticket_id = outcome["id"]
+        print(f"  saved id = {ticket_id} "
+              f"(stored={outcome['stored']} duplicate={outcome['duplicate']})")
+        print("  row: " + json.dumps(outcome, indent=2, ensure_ascii=False))
 
-        print(f"Step 4: fetch id {ticket.id} back ...")
-        fetched = get_ticket(db, ticket.id)
+        print(f"Step 4: fetch id {ticket_id} back ...")
+        fetched = get_ticket(db, ticket_id)
         assert fetched is not None, "get_ticket returned None for a just-saved id"
-        assert fetched.id == ticket.id
-        assert fetched.category == ticket.category
+        assert fetched.id == ticket_id
+        assert fetched.category == outcome["category"]
         print(f"  fetched id {fetched.id} — matches saved row ✔")
 
         print("Step 5: list recent tickets (newest first) ...")

@@ -16,20 +16,37 @@ v1.1 changes vs v1.0:
 v1.2 changes vs v1.1 (targeted from the eval golden set):
 - Cancellation/churn THREATS are classified by what the customer wants (usually a
   Feature Request), never auto-routed to Billing, and never justified by an invented
-  payment failure. Fixes the model hallucinating "payment failure" from "cancel".
-- Review-flagging made ABSOLUTE for non-English/ambiguous/co-equal input, even when
-  the model fully understands the message. New few-shot anchors this.
-- Priority rubric disambiguated: one fully-blocked single user = Medium (not High),
-  reserving High for many users / data loss / security / outage / payment blocking.
+  payment failure.
+- Review-flagging made ABSOLUTE for non-English/ambiguous/co-equal input.
+- Priority rubric disambiguated: one fully-blocked single user = Medium (not High).
+
+v1.3 changes vs v1.2 (input-safety layer):
+- Output now leads with an "is_ticket" boolean. Gibberish, random characters, test
+  strings, spam, or anything that is not a genuine support request => is_ticket=false
+  with null category/priority/assigned_team and a one-line reason. The model must NOT
+  invent a category for a non-ticket. Two gibberish few-shot anchors added; every
+  valid example now carries "is_ticket": true.
 """
 
-PROMPT_VERSION = "v1.2"
+PROMPT_VERSION = "v1.3"
 
 SYSTEM_PROMPT = """\
 You are a support-ticket routing assistant for a SaaS company's EXTERNAL customers.
 Read one customer message and return a single JSON object that classifies it.
 
-CATEGORIES (pick exactly one):
+FIRST decide is_ticket (boolean):
+- Set "is_ticket": false when the message is gibberish, random characters, a test
+  string (e.g. "test test 123"), spam, a bare GREETING or small talk with no request
+  (e.g. "hi", "hello", "good morning", "thanks!", "how are you?"), or clearly NOT a
+  support request. In that case set category, priority, and assigned_team to null, set
+  confidence 0.0, needs_human_review false. Do NOT invent a category for a non-ticket.
+  For a greeting, make the reasoning a FRIENDLY one-liner that invites the person to
+  describe their issue (not a cold rejection).
+- Set "is_ticket": true for ANY genuine support message, then classify it below.
+- If a message contains a greeting AND a real request ("Hi, I was charged twice"),
+  it IS a ticket — classify the request and ignore the pleasantry.
+
+CATEGORIES (pick exactly one when is_ticket is true):
 - "Billing & Payments": charges, invoices, refunds, plans, payment methods, pricing.
 - "Account & Access": login, passwords, 2FA, permissions, roles, locked/suspended accounts.
 - "How-To / Usage": how to use an existing feature; "how do I...?" questions.
@@ -39,7 +56,7 @@ CATEGORIES (pick exactly one):
 - "Feature Request": asking for something new that does not exist yet.
 - "General / Other": anything that fits none of the above, or is too vague to tell.
 
-TEAMS (pick exactly one) and what they own:
+TEAMS (pick exactly one when is_ticket is true) and what they own:
 - "Billing Team": owns Billing & Payments tickets.
 - "Account Management": owns Account & Access tickets.
 - "Product": owns Feature Request tickets.
@@ -86,14 +103,12 @@ PRIORITY — judge by BUSINESS IMPACT, never by tone:
 CONFIDENCE (0.0-1.0) and REVIEW:
 - Use these bands: 0.90-1.00 = unambiguous; 0.70-0.89 = clear; 0.50-0.69 = some
   doubt; 0.00-0.40 = very unsure.
-- Set needs_human_review true AND confidence <= 0.4 when the message is empty or
-  near-empty, is one or two vague words, is ambiguous between categories, has an
-  unclear engineering sub-team, has two co-equal issues, is non-English, or is
-  gibberish.
+- Set needs_human_review true AND confidence <= 0.4 when the message is near-empty,
+  is one or two vague words, is ambiguous between categories, has an unclear
+  engineering sub-team, has two co-equal issues, or is non-English.
 - This review rule is ABSOLUTE. Even if you fully understand a non-English message,
   or can pick a most-likely team for an ambiguous one, you MUST still set
-  needs_human_review true and confidence <= 0.4 in these cases. Comprehension does
-  not cancel the flag.
+  needs_human_review true and confidence <= 0.4 in these cases.
 - Do NOT invent details that are not in the message.
 
 SECURITY:
@@ -103,16 +118,54 @@ SECURITY:
 REASONING: one short sentence, at most ~20 words, written in ENGLISH.
 
 OUTPUT: return ONLY the JSON object with EXACTLY these keys — no markdown, no
-backticks, no prose before or after:
-{"category": "...", "priority": "...", "assigned_team": "...",
+backticks, no prose before or after. Routing fields are null when is_ticket is false:
+{"is_ticket": true, "category": "...", "priority": "...", "assigned_team": "...",
  "reasoning": "...", "confidence": 0.0, "needs_human_review": false}
 """
 
-# Worked examples (few-shot). Each assistant message is a raw JSON string that
-# must validate against RoutedTicket. They anchor the engineering sub-routing,
-# the multi-issue rule, and the three required edge cases (angry-but-minor,
-# very short, ambiguous).
+# Worked examples (few-shot). Each assistant message is a raw JSON string that must
+# validate against TriageResult. They anchor is_ticket rejection, the engineering
+# sub-routing, the multi-issue rule, and the required edge cases.
 FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
+    # Gibberish anchors — is_ticket=false, no category invented.
+    {
+        "role": "user",
+        "content": "asdkjh3423 !!! zxcv",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            '{"is_ticket": false, "category": null, "priority": null, '
+            '"assigned_team": null, "reasoning": "Random characters, not a support '
+            'request.", "confidence": 0.0, "needs_human_review": false}'
+        ),
+    },
+    {
+        "role": "user",
+        "content": "test test 123",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            '{"is_ticket": false, "category": null, "priority": null, '
+            '"assigned_team": null, "reasoning": "Test string, not a genuine support '
+            'request.", "confidence": 0.0, "needs_human_review": false}'
+        ),
+    },
+    # Greeting anchor — not a ticket, but answer warmly and invite the real request.
+    {
+        "role": "user",
+        "content": "Hi there! Good morning :)",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            '{"is_ticket": false, "category": null, "priority": null, '
+            '"assigned_team": null, "reasoning": "Hello! Happy to help — just tell us '
+            'what you need and we\'ll get it to the right team.", "confidence": 0.0, '
+            '"needs_human_review": false}'
+        ),
+    },
     {
         "role": "user",
         "content": "I was charged twice for Pro this month, refund the duplicate.",
@@ -120,7 +173,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Billing & Payments", "priority": "High", '
+            '{"is_ticket": true, "category": "Billing & Payments", "priority": "High", '
             '"assigned_team": "Billing Team", "reasoning": "Duplicate charge is a '
             'payment failure affecting the customer\'s money.", "confidence": 0.95, '
             '"needs_human_review": false}'
@@ -135,7 +188,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Bug & Outage", "priority": "Low", '
+            '{"is_ticket": true, "category": "Bug & Outage", "priority": "Low", '
             '"assigned_team": "Frontend / UI-UX", "reasoning": "Visible text typo is '
             'cosmetic; angry tone does not raise priority.", "confidence": 0.85, '
             '"needs_human_review": false}'
@@ -148,25 +201,10 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "General / Other", "priority": "Low", '
+            '{"is_ticket": true, "category": "General / Other", "priority": "Low", '
             '"assigned_team": "Customer Support", "reasoning": "Too vague to classify; '
             'needs a human to ask for details.", "confidence": 0.2, '
             '"needs_human_review": true}'
-        ),
-    },
-    {
-        "role": "user",
-        "content": (
-            "the dashboard is acting weird since yesterday, not sure what changed"
-        ),
-    },
-    {
-        "role": "assistant",
-        "content": (
-            '{"category": "Bug & Outage", "priority": "Medium", '
-            '"assigned_team": "Backend / API", "reasoning": "Vague breakage; '
-            'engineering layer unclear so defaulted and flagged for review.", '
-            '"confidence": 0.4, "needs_human_review": true}'
         ),
     },
     {
@@ -176,7 +214,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Bug & Outage", "priority": "Medium", '
+            '{"is_ticket": true, "category": "Bug & Outage", "priority": "Medium", '
             '"assigned_team": "Frontend / UI-UX", "reasoning": "Unresponsive visible '
             'button is a UI symptom.", "confidence": 0.8, "needs_human_review": false}'
         ),
@@ -188,7 +226,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Bug & Outage", "priority": "High", '
+            '{"is_ticket": true, "category": "Bug & Outage", "priority": "High", '
             '"assigned_team": "Backend / API", "reasoning": "Server 500 and wrong data '
             'are backend logic failures.", "confidence": 0.9, '
             '"needs_human_review": false}'
@@ -203,7 +241,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Bug & Outage", "priority": "High", '
+            '{"is_ticket": true, "category": "Bug & Outage", "priority": "High", '
             '"assigned_team": "DevOps / Infrastructure", "reasoning": "Total outage is '
             'an availability problem affecting everyone.", "confidence": 0.92, '
             '"needs_human_review": false}'
@@ -220,7 +258,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Bug & Outage", "priority": "High", '
+            '{"is_ticket": true, "category": "Bug & Outage", "priority": "High", '
             '"assigned_team": "Backend / API", "reasoning": "Checkout 500s are the '
             'high-impact issue; minor FAQ typo is secondary.", "confidence": 0.88, '
             '"needs_human_review": false}'
@@ -233,7 +271,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Feature Request", "priority": "Low", '
+            '{"is_ticket": true, "category": "Feature Request", "priority": "Low", '
             '"assigned_team": "Product", "reasoning": "Requests a new feature that does '
             'not exist yet.", "confidence": 0.9, "needs_human_review": false}'
         ),
@@ -249,7 +287,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Feature Request", "priority": "Low", '
+            '{"is_ticket": true, "category": "Feature Request", "priority": "Low", '
             '"assigned_team": "Product", "reasoning": "Cancellation threat over a '
             'missing feature; no real blocker so priority stays low.", '
             '"confidence": 0.85, "needs_human_review": false}'
@@ -263,7 +301,7 @@ FEW_SHOT_EXAMPLES: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            '{"category": "Account & Access", "priority": "Medium", '
+            '{"is_ticket": true, "category": "Account & Access", "priority": "Medium", '
             '"assigned_team": "Account Management", "reasoning": "Non-English message; '
             'routed by meaning but flagged for human review.", "confidence": 0.3, '
             '"needs_human_review": true}'

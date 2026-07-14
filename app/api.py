@@ -6,6 +6,7 @@ session is injected via Depends(get_db) — endpoints never open their own sessi
 """
 
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,14 +14,49 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import InterfaceError, OperationalError
 from sqlalchemy.orm import Session
 
-from app.api_schemas import HealthOut, TicketCreate, TicketListOut, TicketOut
+from app.api_schemas import HealthOut, TicketCreate, TicketListOut, TicketOut, TriageOut
 from app.config import settings
-from app.db import get_db, init_db, ping_db
+from app.db import engine, get_db, init_db, ping_db, verify_db
 from app.repository import get_ticket, list_tickets, route_and_save
 
+# Ensure our startup/shutdown INFO lines are visible even without extra config.
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger("ticket_router.api")
 
-app = FastAPI(title="Escalio", version="0.3.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Own the DB connection lifecycle for the whole server lifetime.
+
+    STARTUP: verify connectivity ONCE (fail-fast visibility), ensure tables if
+    connected, and record db state on app.state. We START ANYWAY if the DB is down
+    so /health still works and the pool can recover later (pool_pre_ping) with no
+    restart. SHUTDOWN: dispose the shared pool cleanly.
+    """
+    app.state.db_kind = "neon" if settings.is_serverless_db else "local"
+    ok, reason = verify_db()
+    app.state.db_ok = ok
+    if ok:
+        logger.info("✅ Database connected (pool ready)")
+        try:
+            init_db()
+            logger.info("Tables ensured (init_db complete).")
+        except Exception as exc:  # noqa: BLE001 - never block startup on DB
+            logger.warning("init_db() failed after connect: %s", exc)
+    else:
+        logger.warning(
+            "⚠️ Database unavailable at startup: %s — API starting anyway; "
+            "/health will report db down.",
+            reason,
+        )
+
+    yield  # ---- application runs, reusing the single pool for every request ----
+
+    engine.dispose()
+    logger.info("Database pool disposed.")
+
+
+app = FastAPI(title="Escalio", version="0.4.0", lifespan=lifespan)
 
 # Permissive CORS so the Phase 4 Streamlit app can call this locally.
 # NOTE: lock this down to specific origins in production.
@@ -30,15 +66,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def _on_startup() -> None:
-    """Create tables if possible. If the DB is down, start anyway so /health works."""
-    try:
-        init_db()
-    except Exception as exc:  # noqa: BLE001 - never block startup on DB
-        logger.warning("init_db() failed at startup (DB down?): %s", exc)
 
 
 @app.exception_handler(OperationalError)
@@ -64,24 +91,25 @@ def health() -> HealthOut:
     )
 
 
-@app.post("/tickets", response_model=TicketOut, status_code=201)
+@app.post("/tickets", response_model=TriageOut, status_code=201)
 def create_ticket(
     body: TicketCreate, response: Response, db: Session = Depends(get_db)
 ) -> dict:
-    """Route a raw message and save it, returning the full classified row at once.
+    """Triage a raw message; store it only if it is a real ticket.
 
-    De-duplicates on exact text: if this message was already routed, the existing
-    row is returned with 200 and duplicate=true (no second model call). Genuinely
-    new text is routed and saved with 201.
+    Outcomes (the body always carries stored + is_ticket + reasoning):
+      - Gibberish / non-ticket -> 200, stored=false, nothing written to the DB.
+      - Duplicate real ticket  -> 200, the existing row (no second model call).
+      - New real ticket        -> 201, the freshly saved row.
 
-    The LLM failing needs no special handling here: route_ticket() always returns a
-    valid fallback dict, so this still returns 201 with needs_human_review=true and a
-    populated error field. Only a DB failure escalates (to the 503 handler above).
+    The LLM failing needs no special handling: route_ticket() returns a valid
+    fallback ticket (flagged for review), which is stored with 201. Only a DB
+    failure escalates (to the 503 handler above) — never a stack trace.
     """
-    ticket, is_duplicate = route_and_save(db, body.text)
-    if is_duplicate:
-        response.status_code = 200
-    return {**ticket.to_dict(), "duplicate": is_duplicate}
+    outcome = route_and_save(db, body.text)
+    if not (outcome["stored"] and not outcome["duplicate"]):
+        response.status_code = 200  # rejected or duplicate — nothing new created
+    return outcome
 
 
 @app.get("/tickets/{ticket_id}", response_model=TicketOut)
