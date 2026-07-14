@@ -95,3 +95,101 @@ Not systematic bugs — three known, mostly-irreducible classes:
 Generate more labeled tickets with a stronger model (GPT) as the grader, following the
 v1.2 rubric verbatim, and avoid reusing the few-shot examples in `app/prompts.py` (so
 the set stays a real holdout). Append to `test_set.json` to grow the honest measure.
+
+---
+
+# Model Benchmark Harness
+
+A separate, richer harness that compares **multiple LLM configs** against a labeled
+answer key, runs each **3× for variance**, scores per-field + set-based accuracy, and
+renders a comparison view in the Streamlit **📊 Benchmarks** tab.
+
+## 1. The dataset
+
+`eval/benchmark_set.json` — 60 hand-reviewed tickets. Each item:
+
+```json
+{
+  "id": "T24", "text": "...", "difficulty": "hard",
+  "tags": ["multi_issue", "billing", "account_access"],
+  "expected": {
+    "is_ticket": true,
+    "issues": [{"category": "...", "assigned_team": "...", "reasoning": "..."}],
+    "priority": "High", "primary_team": "Billing Team", "needs_human_review": false
+  },
+  "label_notes": "why this is the correct routing"
+}
+```
+
+It is the **ground truth** (already human-reviewed): the labels encode the v1.2/v1.4
+rubric — business-impact priority, symptom-based bug sub-routing, gibberish/greeting
+rejection, non-English review, prompt-injection resistance, and multi-issue extraction
+(single, two-, and three-issue cases, plus over-split traps). To extend it, add items
+in the same shape and re-verify by hand.
+
+## 2. Run it
+
+```bash
+source .venv/bin/activate
+
+# quick smoke test (first 5 tickets, 1 run each)
+python eval/run_benchmark.py --limit 5 --repeats 1
+
+# full run (all models, 3× each)
+python eval/run_benchmark.py
+
+# a subset of models
+python eval/run_benchmark.py --models "Qwen 7B" "GPT-4o-mini"
+```
+
+Results are written to `eval/results/<timestamp>__<gitsha>.json` and copied to
+`eval/results/latest.json` (which the UI loads by default). Open the **📊 Benchmarks**
+tab to see the leaderboard, charts, variance, breakdowns, and worst misses; the tab
+also has a **Run quick smoke test** button that shells out to the runner.
+
+Configs skip cleanly (not crash) when a model isn't available: OpenAI configs are
+skipped with "no API key" if `OPENAI_API_KEY` is unset, and Ollama configs you haven't
+pulled are skipped with an `ollama pull …` hint.
+
+## 3. Reading the metrics
+
+| Column | Meaning |
+|--------|---------|
+| **Exact %** | Every scored field correct — the strict "perfect routing" metric. |
+| **Category % / Team %** | The **set** of issue categories / teams matches the expected set (order-independent; single-issue = plain equality). Set-based because a multi-issue ticket has several right answers, not one. |
+| **Priority %** | Ticket-level priority matches (null == null for non-tickets). |
+| **Review %** | `needs_human_review` matches. |
+| **Consistency %** | Of the 3 runs per ticket, the fraction of tickets where **all runs gave the same prediction**. Its own metric because a model can be *accurate on average but unstable* — bad for trust. |
+| **Valid JSON %** | Model produced schema-valid output (no fallback triggered). |
+| **Avg ms** | Mean routing latency per ticket. |
+
+The **consistency-vs-accuracy** view shows Exact % **± the run-to-run stddev**, so
+variance is visible rather than hidden behind an average — the honest way to compare.
+
+## 4. Why 3× + variance
+
+Local models (and to a lesser extent hosted ones) are **not fully deterministic even at
+temperature 0**. A single run can flatter or punish a model by luck. Running 3× and
+reporting the spread separates "genuinely better" from "got a lucky draw."
+
+## 5. Caveats
+
+- **Small N** (60 tickets): treat single-digit gaps as noise; look at the stddev.
+- **Local variance:** temp-0 still wobbles ±1–2 tickets per run.
+- **OpenAI cost/latency:** the GPT configs make real API calls — the full 3× run costs
+  money and takes longer. Use `--limit` while iterating.
+- **Set scoring** rewards getting the right *set* of (category, team) pairs; it does not
+  (yet) score per-issue reasoning quality.
+
+## 6. How to add a model
+
+Edit `MODEL_CONFIGS` at the top of `eval/model_configs.py`:
+
+```python
+{"name": "My Model", "provider": "ollama", "model": "llama3.1:8b"},   # ollama pull llama3.1:8b
+{"name": "GPT-4o",   "provider": "openai", "model": "gpt-4o"},        # needs OPENAI_API_KEY
+```
+
+The harness reuses the **same prompt + validation + retry/repair path** as the live app
+(`route_ticket_with`), so a new model is judged on exactly the pipeline users get. The
+benchmark never writes to the `tickets` database.

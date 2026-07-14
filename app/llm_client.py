@@ -33,12 +33,29 @@ _REQUIRED_KEYS = (
 )
 
 
-def _make_client() -> OpenAI:
-    """Build an OpenAI-SDK client pointed at the active provider."""
-    if settings.provider == "ollama":
+def _make_client_for(provider: str, api_key: str | None = None) -> OpenAI:
+    """Build an OpenAI-SDK client for a specific provider.
+
+    All three providers speak the OpenAI wire format: Groq and Ollama via a custom
+    base_url, OpenAI via the default endpoint. Groq is the default provider.
+    """
+    if provider == "groq":
+        key = api_key or settings.groq_api_key
+        if not key:
+            raise LLMError("Groq API key missing — set GROQ_API_KEY in .env.")
+        return OpenAI(base_url=settings.groq_base_url, api_key=key)
+    if provider == "ollama":
         # Ollama ignores the key but the SDK requires a non-empty string.
         return OpenAI(base_url=settings.ollama_base_url, api_key="ollama")
-    return OpenAI(api_key=settings.openai_api_key)
+    key = api_key or settings.openai_api_key
+    if not key:
+        raise LLMError("OpenAI API key missing — set OPENAI_API_KEY in .env.")
+    return OpenAI(api_key=key)
+
+
+def _make_client() -> OpenAI:
+    """Build an OpenAI-SDK client pointed at the active provider (from settings)."""
+    return _make_client_for(settings.provider)
 
 
 def _repair_message() -> dict[str, str]:
@@ -60,30 +77,34 @@ def _repair_message() -> dict[str, str]:
     }
 
 
-def route_with_llm(ticket_text: str) -> tuple[TriageResult, str]:
-    """Route one ticket through the model. Returns (TriageResult, engine_name).
+def _run_route_loop(
+    ticket_text: str,
+    client: OpenAI,
+    model: str,
+    engine_name: str,
+    max_retries: int,
+    temperature: float | None,
+) -> tuple[TriageResult, str]:
+    """The shared retry+repair loop. Talks to one client/model; raises LLMError.
 
-    Retries up to settings.max_retries on network errors, empty content, JSON
-    parse errors, or schema-validation errors, appending a corrective message
-    after a bad response. Raises LLMError if every attempt fails.
+    This is the ONLY place the prompt is sent and the response validated, so the
+    live app and the benchmark harness share exactly one code path. `temperature`
+    is omitted from the request when None (some models only accept their default).
     """
-    if settings.use_mock:
-        return _mock_route(ticket_text), "mock"
-
-    engine_name = f"{settings.provider}:{settings.active_model}"
-    client = _make_client()
     messages = build_messages(ticket_text)
     last_error = "unknown error"
 
     # One initial attempt plus up to max_retries additional attempts.
-    for attempt in range(settings.max_retries + 1):
+    for attempt in range(max_retries + 1):
         try:
-            response = client.chat.completions.create(
-                model=settings.active_model,
-                messages=messages,
-                temperature=settings.temperature,
-                response_format={"type": "json_object"},
-            )
+            kwargs: dict = {
+                "model": model,
+                "messages": messages,
+                "response_format": {"type": "json_object"},
+            }
+            if temperature is not None:
+                kwargs["temperature"] = temperature
+            response = client.chat.completions.create(**kwargs)
             content = (response.choices[0].message.content or "").strip()
             if not content:
                 raise ValueError("empty content from model")
@@ -101,10 +122,46 @@ def route_with_llm(ticket_text: str) -> tuple[TriageResult, str]:
         except Exception as err:  # network / API errors
             last_error = f"{type(err).__name__}: {err}"
 
-        if attempt < settings.max_retries:
+        if attempt < max_retries:
             time.sleep(1.5 * (attempt + 1))
 
-    raise LLMError(f"Model failed after {settings.max_retries + 1} attempts: {last_error}")
+    raise LLMError(f"Model failed after {max_retries + 1} attempts: {last_error}")
+
+
+def route_with_llm(ticket_text: str) -> tuple[TriageResult, str]:
+    """Route one ticket through the ACTIVE provider/model (from settings).
+
+    Returns (TriageResult, engine_name). Uses the offline mock when configured.
+    """
+    if settings.use_mock:
+        return _mock_route(ticket_text), "mock"
+    return _run_route_loop(
+        ticket_text,
+        _make_client(),
+        settings.active_model,
+        f"{settings.provider}:{settings.active_model}",
+        settings.max_retries,
+        settings.temperature,
+    )
+
+
+def route_with_llm_config(
+    ticket_text: str, provider: str, model: str, api_key: str | None = None
+) -> tuple[TriageResult, str]:
+    """Route through a SPECIFIC provider/model (for the benchmark harness).
+
+    Reuses the same prompt + validation + retry/repair path as the live app; only
+    the client/model differ. Raises LLMError (e.g. missing OpenAI key) so the caller
+    can record a clean miss. gpt-5* models only accept their default temperature, so
+    it is omitted for them.
+    """
+    temperature: float | None = settings.temperature
+    if provider == "openai" and model.startswith("gpt-5"):
+        temperature = None
+    client = _make_client_for(provider, api_key)
+    return _run_route_loop(
+        ticket_text, client, model, f"{provider}:{model}", settings.max_retries, temperature
+    )
 
 
 # --- Mock path -----------------------------------------------------------------
@@ -192,4 +249,4 @@ def _single_issue(
 
 
 # Keep the prompt version importable alongside the client for convenience.
-__all__ = ["route_with_llm", "LLMError", "PROMPT_VERSION"]
+__all__ = ["route_with_llm", "route_with_llm_config", "LLMError", "PROMPT_VERSION"]

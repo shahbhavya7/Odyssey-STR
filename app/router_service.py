@@ -14,8 +14,10 @@ import time
 
 from langdetect import DetectorFactory, LangDetectException, detect
 
+from collections.abc import Callable
+
 from app import guardrails
-from app.llm_client import LLMError, route_with_llm
+from app.llm_client import LLMError, route_with_llm, route_with_llm_config
 from app.prompts import PROMPT_VERSION
 from app.schema import (
     MAX_ISSUES,
@@ -136,13 +138,15 @@ def _to_dict(
     }
 
 
-def route_ticket(raw_text: str) -> dict:
-    """Route one support message to a structured result. Never raises.
+def _route(
+    raw_text: str,
+    llm_fn: Callable[[str], tuple[TriageResult, str]],
+) -> dict:
+    """Shared routing pipeline. Never raises.
 
-    Output dict always carries is_ticket. A non-ticket (gibberish/empty) has null
-    routing fields and is NOT meant to be stored; a real ticket is fully classified.
-    Keys: raw_ticket, is_ticket, category, priority, assigned_team, reasoning,
-    confidence, needs_human_review, engine, prompt_version, processing_ms, error.
+    Runs the same guardrails → LLM → review-guards → flatten path regardless of
+    which model backs `llm_fn`, so the live app and the benchmark harness behave
+    identically. Does NOT touch the database.
     """
     start = time.perf_counter()
 
@@ -159,10 +163,28 @@ def route_ticket(raw_text: str) -> dict:
     clean = guardrails.sanitize(raw_text)
 
     try:
-        ticket, engine = route_with_llm(clean)
+        ticket, engine = llm_fn(clean)
         ticket = _apply_review_guards(ticket, clean)
         return _to_dict(ticket, raw_text, engine, elapsed_ms(), None)
     except LLMError as err:
         # A dead model must not discard a real ticket — escalate to a human.
         fallback = safe_fallback("Routing engine unavailable — escalated to a human.")
         return _to_dict(fallback, raw_text, "fallback", elapsed_ms(), str(err))
+
+
+def route_ticket(raw_text: str) -> dict:
+    """Route one support message using the ACTIVE provider/model. Never raises.
+
+    Output dict always carries is_ticket + the full multi-issue view. A non-ticket
+    (gibberish/empty) has null routing fields and is NOT meant to be stored.
+    """
+    return _route(raw_text, route_with_llm)
+
+
+def route_ticket_with(raw_text: str, provider: str, model: str) -> dict:
+    """Route using a SPECIFIC provider/model (benchmark harness). Never raises.
+
+    Same pipeline and output shape as route_ticket(); only the model differs. A
+    missing OpenAI key surfaces as a fallback dict (engine="fallback"), not a crash.
+    """
+    return _route(raw_text, lambda text: route_with_llm_config(text, provider, model))

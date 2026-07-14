@@ -32,10 +32,10 @@ The interesting part isn't calling an LLM — anyone can do that. It's the **rel
 | | |
 |---|---|
 | 🗂️ **Taxonomy** | 6 categories · 3 priorities · 7 teams — all **enums**, so an invalid value is *impossible* |
-| ⚡ **Speed** | ~**1.4 s / ticket** (local `qwen2.5:7b`) vs ~30–60 s by hand |
+| ⚡ **Speed** | fast hosted Qwen via **Groq** (default) vs ~30–60 s by hand |
 | 🎯 **Prompt quality** | Exact-match on a 40-ticket **held-out** set: **56.7% → 80%** (v1.0 → v1.2) |
 | 🛡️ **Reliability** | **6 / 6** hardening tests green · never raises on bad input |
-| 🔌 **Provider switch** | Local **Ollama** (free) ⇄ **OpenAI** — one env var, zero code change |
+| 🔌 **Provider switch** | **Groq** (default, fast) ⇄ **Ollama** (local/free) ⇄ **OpenAI** — one env var, zero code change |
 | 🗄️ **Storage** | Real client–server **PostgreSQL** via SQLAlchemy ORM (or serverless **Neon**) |
 | 🔒 **Security** | Secrets in `.env` only · ORM = no SQL injection · PII redaction · injection-resistant |
 
@@ -134,11 +134,8 @@ Every ticket lands in one **category**, which routes to one owning **team**:
 
 ## Quickstart
 
-**Prerequisites:** Python 3.12 · PostgreSQL · [Ollama](https://ollama.com) with the model:
-
-```bash
-ollama pull qwen2.5:7b
-```
+**Prerequisites:** Python 3.12 · PostgreSQL · a free [Groq](https://console.groq.com) API
+key (the default provider — no local model server needed).
 
 ```bash
 # 1. Clone & enter
@@ -150,25 +147,50 @@ pip install -r requirements.txt
 
 # 3. Database + config
 createdb ticketrouter
-cp .env.example .env          # then set DATABASE_URL; keep PROVIDER=ollama (default)
+cp .env.example .env          # then set DATABASE_URL and GROQ_API_KEY (PROVIDER=groq by default)
 
 # 4. Run — two terminals
-ollama serve                                          # if not already running
 uvicorn app.api:app --reload --port 8000              # Terminal 1  → API
 streamlit run ui/app.py                               # Terminal 2  → UI
 ```
 
 The API creates the `tickets` table on startup. Interactive docs: `http://localhost:8000/docs`.
+No local model to pull or serve — Groq hosts the Qwen model.
 
-**Switch to OpenAI** — no code change, just `.env`:
+### Switch providers — `.env` only, zero code change
 
 ```dotenv
+# Default: hosted Qwen via Groq (fast, no local server)
+PROVIDER=groq
+GROQ_API_KEY=gsk-...
+GROQ_MODEL=qwen/qwen3-32b
+
+# Or OpenAI
 PROVIDER=openai
 OPENAI_API_KEY=sk-...
 OPENAI_MODEL=gpt-4o-mini
 ```
 
 Or run with **no model at all**: `MOCK_MODE=true`.
+
+### Optional: run fully local & free with Ollama
+
+Prefer offline / private / no-API-cost routing (or want the local-vs-hosted benchmark
+comparison)? Use [Ollama](https://ollama.com) instead — same Qwen model family:
+
+```bash
+ollama pull qwen2.5:7b
+ollama serve                  # in its own terminal
+```
+
+Then set in `.env`:
+
+```dotenv
+PROVIDER=ollama
+OLLAMA_MODEL=qwen2.5:7b
+```
+
+Ollama is slower than Groq but needs no key and never leaves your machine.
 
 ---
 

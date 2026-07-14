@@ -20,7 +20,7 @@ with a correction; if it still fails, we hand back a safe "escalate to a human" 
 |------|--------------------------|
 | `app/schema.py` (updated) | The contract — now with the real SaaS taxonomy (6 categories, 7 teams incl. engineering). |
 | `app/prompts.py` | The graded core: the AI's instruction sheet plus worked examples. |
-| `app/llm_client.py` | Talks to the AI (Ollama or OpenAI), retries on bad output, and has an offline mock. |
+| `app/llm_client.py` | Talks to the AI (Groq by default, or Ollama / OpenAI), retries on bad output, and has an offline mock. |
 | `app/router_service.py` | The one function everything calls: validates, redacts private info, times, never crashes. |
 | `cli.py` | A terminal tool to route a ticket by hand and read the JSON result. |
 | `docs/PHASE_1_EXPLAINED.md` | This file — the plain-English tour of Phase 1. |
@@ -49,7 +49,7 @@ with a correction; if it still fails, we hand back a safe "escalate to a human" 
 - **What it is:** Our own error type, raised only when the AI fails every attempt. A named error lets the service above catch *exactly* this case and fall back cleanly.
 
 **`_make_client()`**
-- **What it does:** Builds the connection object pointed at whichever provider is switched on — local Ollama or OpenAI. Both speak the same "language," so one code path serves both.
+- **What it does:** Builds the connection object pointed at whichever provider is switched on — hosted Groq (the default), local Ollama, or OpenAI. All three speak the same "language," so one code path serves them all.
 - **Output:** a ready-to-use client.
 - **Why it exists:** So switching providers is one setting, not a rewrite.
 

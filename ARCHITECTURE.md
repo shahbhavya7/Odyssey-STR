@@ -7,7 +7,7 @@ touching routing.
 | Layer | File(s) | Responsibility |
 |-------|---------|----------------|
 | **Core service** | `app/router_service.py` | `route_ticket(text)` — validate, truncate, redact PII, time, apply review guards, and turn any failure into a safe fallback. **Never raises.** |
-| **LLM client** | `app/llm_client.py` | The only code that talks to a model. Provider-agnostic (Ollama or OpenAI via the same SDK). Retry + JSON-repair loop + offline mock. |
+| **LLM client** | `app/llm_client.py` | The only code that talks to a model. Provider-agnostic (Groq · Ollama · OpenAI via the same SDK). Retry + JSON-repair loop + offline mock. |
 | **Prompt** | `app/prompts.py` | The graded artifact: taxonomy, business-impact priority rubric, symptom-based bug sub-routing, few-shot examples, `PROMPT_VERSION`. |
 | **Data** | `app/models.py`, `app/repository.py`, `app/db.py` | SQLAlchemy ORM model + session + save/get/list. ORM only → parameterized queries. |
 | **API** | `app/api.py`, `app/api_schemas.py` | FastAPI HTTP front door. `POST /tickets`, `GET /tickets/{id}`, `GET /tickets`, `GET /health`. Session injected via `Depends(get_db)`. Clean 503 when the DB is down. |
@@ -47,8 +47,9 @@ TicketOut JSON → UI renders the glass result card
 
 - **Enums as the contract** — the model literally cannot return an off-taxonomy value;
   a bad value fails validation and triggers repair/fallback rather than corrupting data.
-- **Provider switch** — develop free against local Ollama, flip one env var to OpenAI for
-  the demo. Same code path (Ollama exposes an OpenAI-compatible endpoint).
+- **Provider switch** — default to fast hosted **Groq** (Qwen), or flip one env var to
+  **Ollama** (local/free/offline) or **OpenAI**. All three speak the OpenAI wire format,
+  so it's a single code path — only the client's base URL / key differ.
 - **ORM everywhere** — parameterized queries, no SQL injection, and the schema is created
   from the model (`create_all`), right-sized for a two-week project. (Alembic migrations
   are the "what I'd do next" answer.)

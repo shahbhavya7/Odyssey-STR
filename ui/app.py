@@ -31,6 +31,7 @@ from ui.components import (  # noqa: E402
     stat_cards,
     time_saved_panel,
 )
+from ui.benchmark_view import page_benchmarks  # noqa: E402
 from ui.theme import inject_theme  # noqa: E402
 
 st.set_page_config(
@@ -235,7 +236,7 @@ def page_batch() -> None:
                     "review": "⚠" if r["needs_human_review"] else "",
                 })
         df = pd.DataFrame(rows)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
 
         csv = df.to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -310,11 +311,16 @@ def main() -> None:
         "Batch Demo": page_batch,
         "Browse & Search": page_browse,
         "Find by ID": page_find,
+        "📊 Benchmarks": page_benchmarks,
     }
     choice = st.sidebar.radio(
         "Navigate", list(pages.keys()), label_visibility="collapsed"
     )
 
+    # Benchmarks only reads a results file, so it works even with the API offline.
+    if choice == "📊 Benchmarks":
+        page_benchmarks()
+        return
     if health is None:
         offline_panel()
         return
