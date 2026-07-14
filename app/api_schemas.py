@@ -16,6 +16,15 @@ class TicketCreate(BaseModel):
     )
 
 
+class IssueOut(BaseModel):
+    """One distinct issue inside a ticket."""
+
+    category: str
+    priority: str
+    assigned_team: str
+    reasoning: str
+
+
 class TicketOut(BaseModel):
     """One routed+saved ticket, mirroring Ticket.to_dict()."""
 
@@ -34,6 +43,11 @@ class TicketOut(BaseModel):
     prompt_version: str
     processing_ms: int
     error: str | None
+    # Multi-issue view (flat fields above stay pointed at the primary issue).
+    issues: list[IssueOut] = []
+    all_teams: list[str] = []
+    primary_team: str | None = None
+    primary_issue_index: int | None = None
     human_verdict: str | None
     created_at: str
     duplicate: bool = Field(
@@ -68,6 +82,12 @@ class TriageOut(BaseModel):
     prompt_version: str
     processing_ms: int
     error: str | None = None
+    # Multi-issue view.
+    issues: list[IssueOut] = []
+    all_teams: list[str] = []
+    primary_team: str | None = None
+    primary_issue_index: int | None = None
+    primary_reasoning: str | None = None
     human_verdict: str | None = None
     created_at: str | None = None
 

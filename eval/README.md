@@ -27,6 +27,26 @@ Each item:
 }
 ```
 
+## Multi-issue scoring (v1.4)
+
+Since v1.4 a ticket can hold several issues. The single-label `expected` above scores
+the **ticket-level** priority and the **primary** issue's category/team (the flat
+back-compat fields), which keeps the existing golden/test sets valid unchanged.
+
+To score multi-issue *extraction* itself, compare the **set** of `(category, team)`
+pairs the model produced against an expected set — order-independent, so
+`{(Billing, Billing Team), (Account & Access, Account Management)}` matches regardless
+of which issue came first. The multi-issue tickets in `data/sample_tickets.csv`
+(ids 21–23) are the seed for this; their expected sets are:
+
+| id | message (abbrev.) | expected issue set `(category → team)` | ticket priority |
+|----|-------------------|----------------------------------------|-----------------|
+| 21 | can't log in + double-charged | Account & Access → Account Management ; Billing & Payments → Billing Team | High (billing) |
+| 22 | checkout 500s + FAQ typo | Bug & Outage → Backend / API ; Bug & Outage → Frontend / UI-UX | High (backend) |
+| 23 | dashboard won't load + wants dark mode | Bug & Outage → DevOps / Infrastructure ; Feature Request → Product | High (outage) |
+
+A future `run_eval.py` flag can load these and report set precision/recall per ticket.
+
 ## Why a dev/test split
 
 Once you tune a prompt against a set, that set's score is no longer honest — you've

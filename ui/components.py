@@ -255,10 +255,130 @@ def rejected_card(ticket: dict, *, embedded: bool = False) -> None:
     )
 
 
+def _confidence_block_html(confidence: float) -> str:
+    """Small labelled confidence bar used inside cards."""
+    hue = "#FF5C72" if confidence < 0.4 else "#F5A524" if confidence < 0.7 else "#34E0A1"
+    return (
+        "<div style='padding:11px 13px;border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:10px;background:rgba(255,255,255,0.025);'>"
+        "<div style='display:flex;justify-content:space-between;gap:10px;'>"
+        "<span style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Confidence</span>"
+        f"<strong style='color:{hue};font-size:0.82rem;'>{confidence * 100:.0f}%</strong></div>"
+        "<div style='height:6px;background:rgba(255,255,255,0.08);border-radius:999px;"
+        "margin-top:8px;overflow:hidden;'>"
+        f"<div style='height:100%;width:{confidence * 100:.0f}%;background:{hue};"
+        f"border-radius:999px;box-shadow:0 0 9px {_rgba(hue, 0.5)};'></div></div></div>"
+    )
+
+
+def _issue_row_html(issue: dict, *, is_primary: bool) -> str:
+    """One issue as a compact row: badges + priority + its one-line reasoning."""
+    category = html.escape(str(issue.get("category", "—")))
+    team = str(issue.get("assigned_team", "—"))
+    priority = str(issue.get("priority", "—"))
+    reasoning = html.escape(str(issue.get("reasoning", "—")))
+    star = (
+        "<span style='color:#B65CFF;font-size:0.68rem;font-weight:700;"
+        "text-transform:uppercase;'>Primary</span>"
+        if is_primary
+        else ""
+    )
+    border = _rgba("#B65CFF", 0.35) if is_primary else "rgba(255,255,255,0.08)"
+    return (
+        f"<div style='padding:11px 13px;border:1px solid {border};border-radius:10px;"
+        "background:rgba(255,255,255,0.025);margin-top:8px;'>"
+        "<div style='display:flex;gap:7px;align-items:center;flex-wrap:wrap;'>"
+        f"<span style='color:#F5F0FB;font-weight:600;font-size:0.9rem;'>{category}</span>"
+        f"{_pill(priority, PRIORITY_COLORS.get(priority, '#94A3B8'))}"
+        f"{team_badge(team)}{star}</div>"
+        f"<div style='color:#B4A9C4;font-size:0.86rem;line-height:1.45;margin-top:6px;'>{reasoning}</div>"
+        "</div>"
+    )
+
+
+def _multi_issue_card(ticket: dict, *, embedded: bool = False) -> None:
+    """Render a ticket that touches MULTIPLE teams: one priority, all issues listed."""
+    raw_ticket = html.escape(str(ticket.get("raw_ticket", "—")))
+    reasoning = html.escape(str(ticket.get("reasoning", "—")))
+    priority = str(ticket.get("priority", "—"))
+    review = bool(ticket.get("needs_human_review"))
+    confidence = max(0.0, min(1.0, float(ticket.get("confidence", 0.0))))
+    issues = ticket.get("issues") or []
+    primary_idx = ticket.get("primary_issue_index")
+    primary_team = html.escape(str(ticket.get("primary_team", "—")))
+    teams = ticket.get("all_teams") or []
+    routes_to = " · ".join(html.escape(str(t)) for t in teams) if teams else primary_team
+    container_style = (
+        "padding:8px 2px 4px;"
+        if embedded
+        else f"{_GLASS}border-radius:20px;padding:22px 24px;margin-bottom:12px;"
+    )
+
+    rows = "".join(
+        _issue_row_html(issue, is_primary=(i == primary_idx))
+        for i, issue in enumerate(issues)
+    )
+    review_banner = ""
+    if review:
+        review_banner = (
+            f"<div style='display:flex;align-items:center;gap:9px;background:{_rgba('#F5A524', 0.10)};"
+            f"border:1px solid {_rgba('#F5A524', 0.30)};color:#F5A524;padding:10px 13px;"
+            "border-radius:10px;margin-top:14px;font-size:0.86rem;font-weight:600;'>"
+            "&#9888; Please review — multiple or co-equal issues.</div>"
+        )
+
+    st.markdown(
+        f"<div style='{container_style}overflow-wrap:anywhere;'>"
+        "<div style='display:flex;justify-content:space-between;align-items:flex-start;"
+        "gap:14px;flex-wrap:wrap;'>"
+        "<div><div style='color:#B65CFF;font-size:0.72rem;font-weight:700;text-transform:uppercase;'>"
+        f"Ticket #{html.escape(str(ticket.get('id', '—')))} · {len(issues)} issues</div>"
+        "<div style=\"font-family:'Bricolage Grotesque',sans-serif;font-size:1.3rem;"
+        f"font-weight:700;color:#F5F0FB;margin-top:3px;\">Routes to: {routes_to}</div></div>"
+        "<div style='display:flex;gap:7px;align-items:center;flex-wrap:wrap;'>"
+        f"{priority_badge(priority)}{review_badge(review)}</div></div>"
+        "<div style='margin-top:16px;padding:13px 15px;background:rgba(255,255,255,0.035);"
+        "border:1px solid rgba(255,255,255,0.08);border-radius:12px;'>"
+        "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Customer message</div>"
+        f"<div style='color:#F5F0FB;font-size:0.95rem;line-height:1.5;margin-top:5px;'>{raw_ticket}</div></div>"
+        f"<div style='margin-top:14px;background:{_rgba('#B65CFF', 0.08)};"
+        f"border:1px solid {_rgba('#B65CFF', 0.25)};border-radius:10px;padding:12px 14px;"
+        "display:flex;align-items:center;gap:10px;flex-wrap:wrap;line-height:1.3;'>"
+        "<span style='color:#B65CFF;font-size:0.7rem;font-weight:700;"
+        "text-transform:uppercase;letter-spacing:0.04em;'>Primary owner</span>"
+        f"<span style='color:#F5F0FB;font-weight:600;'>{primary_team}</span>"
+        f"<span style='color:#776B85;font-size:0.85rem;'>— drives the "
+        f"{html.escape(priority)} priority</span></div>"
+        "<div style='margin-top:14px;'>"
+        "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        f"Issues ({len(issues)})</div>{rows}</div>"
+        f"<div style='margin-top:12px;'>{_confidence_block_html(confidence)}</div>"
+        "<div style='margin-top:14px;'>"
+        "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"
+        "Summary</div>"
+        f"<div style='color:#DDE1EA;line-height:1.5;margin-top:5px;'>{reasoning}</div></div>"
+        f"{review_banner}"
+        "<div style='display:flex;gap:8px 18px;flex-wrap:wrap;color:#776B85;font-size:0.72rem;"
+        "margin-top:16px;padding-top:11px;border-top:1px solid rgba(255,255,255,0.08);"
+        "font-variant-numeric:tabular-nums;'>"
+        f"<span>Model&nbsp; {html.escape(str(ticket.get('engine', '—')))}</span>"
+        f"<span>Prompt&nbsp; {html.escape(str(ticket.get('prompt_version', '—')))}</span>"
+        f"<span>Time&nbsp; {html.escape(str(ticket.get('processing_ms', '—')))} ms</span>"
+        f"<span>Created&nbsp; {html.escape(_format_created_at(ticket.get('created_at')))}</span>"
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
+
+
 def result_card(ticket: dict, *, embedded: bool = False) -> None:
-    """Render a triage outcome. Non-tickets get the muted rejected card."""
+    """Render a triage outcome: rejected, single-issue, or multi-issue."""
     if ticket.get("is_ticket") is False or ticket.get("stored") is False:
         rejected_card(ticket, embedded=embedded)
+        return
+    if len(ticket.get("issues") or []) > 1:
+        _multi_issue_card(ticket, embedded=embedded)
         return
     category = html.escape(str(ticket.get("category", "—")))
     raw_ticket = html.escape(str(ticket.get("raw_ticket", "—")))

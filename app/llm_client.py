@@ -13,22 +13,23 @@ from pydantic import ValidationError
 
 from app.config import settings
 from app.prompts import PROMPT_VERSION, build_messages
-from app.schema import Category, Priority, Team, TriageResult
+from app.schema import Category, Issue, Priority, Team, TriageResult
 
 
 class LLMError(Exception):
     """Raised when the model cannot produce a valid TriageResult after retries."""
 
 
-# Keys the model must return; used to build the corrective repair message.
+# Top-level keys the model must return; used to build the corrective repair message.
 _REQUIRED_KEYS = (
     "is_ticket",
-    "category",
+    "issues",
     "priority",
-    "assigned_team",
-    "reasoning",
+    "primary_team",
+    "primary_issue_index",
     "confidence",
     "needs_human_review",
+    "reasoning",
 )
 
 
@@ -47,9 +48,14 @@ def _repair_message() -> dict[str, str]:
         "role": "user",
         "content": (
             f"Your previous reply was not a single valid JSON object. Return ONLY a "
-            f"JSON object with exactly these keys: {keys}. No extra keys, no markdown, "
-            f"no backticks, no extra text. category, priority, and assigned_team MUST "
-            f"be null when is_ticket is false, and MUST be set when is_ticket is true."
+            f"JSON object with exactly these top-level keys: {keys}. No extra keys, no "
+            f"markdown, no backticks, no extra text. 'issues' is an array of objects, "
+            f"each with exactly category, priority, assigned_team, reasoning. When "
+            f"is_ticket is false, issues must be [] and priority/primary_team/"
+            f"primary_issue_index null. When is_ticket is true, provide 1..5 issues, and "
+            f"the ticket 'priority' MUST equal the highest issue priority (High>Medium>"
+            f"Low), with primary_issue_index pointing to that issue and primary_team "
+            f"equal to its assigned_team."
         ),
     }
 
@@ -154,25 +160,34 @@ def _mock_route(ticket_text: str) -> TriageResult:
             confidence=0.0,
             needs_human_review=False,
         )
+    # Single-issue result. (The mock never splits — real multi-issue is the model's job.)
     for keywords, category, priority, team in _MOCK_RULES:
         if any(kw in text for kw in keywords):
-            return TriageResult(
-                is_ticket=True,
-                category=category,
-                priority=priority,
-                assigned_team=team,
-                reasoning="Mock keyword match (no live model).",
-                confidence=0.5,
-                needs_human_review=False,
-            )
+            return _single_issue(category, priority, team,
+                                 "Mock keyword match (no live model).", 0.5, False)
+    return _single_issue(Category.GENERAL, Priority.LOW, Team.CUSTOMER_SUPP,
+                         "Mock router found no keyword match.", 0.3, True)
+
+
+def _single_issue(
+    category: Category,
+    priority: Priority,
+    team: Team,
+    reasoning: str,
+    confidence: float,
+    review: bool,
+) -> TriageResult:
+    """Build a valid single-issue TriageResult (used by the mock path)."""
     return TriageResult(
         is_ticket=True,
-        category=Category.GENERAL,
-        priority=Priority.LOW,
-        assigned_team=Team.CUSTOMER_SUPP,
-        reasoning="Mock router found no keyword match.",
-        confidence=0.3,
-        needs_human_review=True,
+        issues=[Issue(category=category, priority=priority,
+                      assigned_team=team, reasoning=reasoning)],
+        priority=priority,
+        primary_team=team,
+        primary_issue_index=0,
+        confidence=confidence,
+        needs_human_review=review,
+        reasoning=reasoning,
     )
 
 

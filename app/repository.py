@@ -5,13 +5,14 @@ transaction. Uses the ORM exclusively — no raw SQL string building — which
 parameterizes all queries and keeps us safe from SQL injection.
 """
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models import Ticket
 from app.router_service import route_ticket
 
-# Columns we accept from a route_ticket() dict. Unexpected keys are ignored.
+# Columns we accept verbatim from a route_ticket() dict. Unexpected keys are ignored.
+# `issues` stores as JSON; `all_teams` is derived (a list joined to a string) below.
 _TICKET_FIELDS = (
     "raw_ticket",
     "category",
@@ -24,16 +25,23 @@ _TICKET_FIELDS = (
     "prompt_version",
     "processing_ms",
     "error",
+    "issues",
+    "primary_team",
+    "primary_issue_index",
 )
 
 
 def save_ticket(db: Session, result: dict) -> Ticket:
     """Persist a route_ticket() result dict as a new row and return it.
 
-    Reads only known keys from the dict; any extra keys are ignored. Commits and
+    Reads only known keys; extra keys are ignored. `all_teams` arrives as a list and
+    is stored comma-joined so it can be filtered with a simple ILIKE. Commits and
     refreshes so the returned Ticket has its generated id and created_at.
     """
-    ticket = Ticket(**{key: result[key] for key in _TICKET_FIELDS if key in result})
+    data = {key: result[key] for key in _TICKET_FIELDS if key in result}
+    teams = result.get("all_teams") or []
+    data["all_teams"] = ",".join(teams) if teams else None
+    ticket = Ticket(**data)
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
@@ -81,7 +89,11 @@ def list_tickets(
     if priority is not None:
         stmt = stmt.where(Ticket.priority == priority)
     if team is not None:
-        stmt = stmt.where(Ticket.assigned_team == team)
+        # Match ANY concerned team: new rows via the comma-joined all_teams, plus
+        # legacy rows (all_teams NULL) via the flat primary assigned_team.
+        stmt = stmt.where(
+            or_(Ticket.all_teams.ilike(f"%{team}%"), Ticket.assigned_team == team)
+        )
     if category is not None:
         stmt = stmt.where(Ticket.category == category)
     if needs_review is not None:

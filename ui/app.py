@@ -154,6 +154,24 @@ def _summary_strip(results: list[dict]) -> None:
     )
 
 
+def _team_distribution(results: list[dict]) -> None:
+    """Show how many tickets touch each team — a 2-team ticket counts for BOTH."""
+    from collections import Counter
+
+    tally: Counter[str] = Counter()
+    for r in results:
+        if r.get("is_ticket") is False:
+            continue
+        teams = r.get("all_teams") or [r.get("assigned_team")]
+        for t in teams:
+            if t:
+                tally[t] += 1
+    if not tally:
+        return
+    parts = " · ".join(f"{team} ×{n}" for team, n in tally.most_common())
+    st.caption(f"Team load (each concerned team counted): {parts}")
+
+
 def page_batch() -> None:
     """Route many tickets at once — the effortless 20-ticket demo."""
     st.subheader("Batch Demo")
@@ -189,6 +207,7 @@ def page_batch() -> None:
         bar.empty()
 
         _summary_strip(results)
+        _team_distribution(results)
         rows = []
         for r in results:
             if r.get("is_ticket") is False:
@@ -198,16 +217,20 @@ def page_batch() -> None:
                     "category": "rejected / not stored",
                     "priority": "🚫",
                     "team": "—",
+                    "issues": "—",
                     "confidence": "—",
                     "review": "",
                 })
             else:
+                teams = r.get("all_teams") or [r.get("assigned_team")]
+                team_label = r["assigned_team"] + (f" +{len(teams) - 1}" if len(teams) > 1 else "")
                 rows.append({
                     "id": r.get("id", "—"),
                     "ticket": r["raw_ticket"][:60],
                     "category": r["category"],
                     "priority": f"{PRIORITY_DOT.get(r['priority'], '')} {r['priority']}",
-                    "team": r["assigned_team"],
+                    "team": team_label,
+                    "issues": len(r.get("issues") or []),
                     "confidence": round(r["confidence"], 2),
                     "review": "⚠" if r["needs_human_review"] else "",
                 })

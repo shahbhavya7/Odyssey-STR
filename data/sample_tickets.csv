@@ -19,3 +19,6 @@ id,text
 18,"How can I connect your app to our Slack workspace?"
 19,"Please consider adding a Zapier integration so we can automate exporting our tickets."
 20,"The reports page takes over 30 seconds to load and sometimes times out completely."
+21,"I can't log in AND I was double-charged this month — please sort out both."
+22,"Your checkout throws 500 errors, and separately the FAQ page has a typo."
+23,"The whole dashboard won't load at all, and while you're at it please add a dark mode."

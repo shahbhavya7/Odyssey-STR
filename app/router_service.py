@@ -17,7 +17,13 @@ from langdetect import DetectorFactory, LangDetectException, detect
 from app import guardrails
 from app.llm_client import LLMError, route_with_llm
 from app.prompts import PROMPT_VERSION
-from app.schema import TriageResult, rejected_result, safe_fallback
+from app.schema import (
+    MAX_ISSUES,
+    TriageResult,
+    all_teams,
+    rejected_result,
+    safe_fallback,
+)
 
 # Deterministic language detection (langdetect is random-seeded by default).
 DetectorFactory.seed = 0
@@ -57,19 +63,26 @@ def _is_non_english(text: str) -> bool:
 
 
 def _apply_review_guards(ticket: TriageResult, text: str) -> TriageResult:
-    """Force human review for cases the model tends to miss.
+    """Force human review for cases the model tends to miss (deterministic net).
 
-    Currently: non-English input on a real ticket. This is the deterministic
-    reliability net — even if the model confidently routed a foreign-language
-    ticket, a human still confirms it. Non-tickets are left untouched.
+    - Non-English input on a real ticket: even a confident foreign-language route is
+      confirmed by a human.
+    - A ticket maxed out at MAX_ISSUES issues: it likely had extras folded in (we can't
+      tell after the fact), and that many distinct issues warrants a human either way.
+
+    Non-tickets are left untouched.
     """
-    if ticket.is_ticket and _is_non_english(text):
+    if not ticket.is_ticket:
+        return ticket
+    if _is_non_english(text):
         return ticket.model_copy(
             update={
                 "needs_human_review": True,
                 "confidence": min(ticket.confidence, _REVIEW_CONFIDENCE_CAP),
             }
         )
+    if len(ticket.issues) >= MAX_ISSUES:
+        return ticket.model_copy(update={"needs_human_review": True})
     return ticket
 
 
@@ -82,16 +95,38 @@ def _to_dict(
 ) -> dict:
     """Flatten a TriageResult plus metadata into a plain JSON-ready dict.
 
-    Routing fields are null strings when is_ticket is false so the caller (and the
-    UI) can render the rejected state without inventing a category/team.
+    Carries BOTH the full multi-issue view (issues, all_teams, primary_*) AND flat
+    back-compat fields (category/priority/assigned_team/reasoning) pointed at the
+    PRIMARY issue + ticket priority, so existing DB columns, filters, and UI keep
+    working. For a non-ticket, all routing fields are null and issues is [].
     """
+    issues = [
+        {
+            "category": issue.category.value,
+            "priority": issue.priority.value,
+            "assigned_team": issue.assigned_team.value,
+            "reasoning": issue.reasoning,
+        }
+        for issue in ticket.issues
+    ]
+    idx = ticket.primary_issue_index
+    primary = ticket.issues[idx] if (ticket.is_ticket and idx is not None) else None
+
     return {
         "raw_ticket": raw_ticket,
         "is_ticket": ticket.is_ticket,
-        "category": ticket.category.value if ticket.category else None,
+        # Full multi-issue view.
+        "issues": issues,
+        "all_teams": all_teams(ticket),  # ordered unique list of concerned teams
+        "primary_team": ticket.primary_team.value if ticket.primary_team else None,
+        "primary_issue_index": idx,
+        "primary_reasoning": primary.reasoning if primary else None,
+        # Flat back-compat fields (primary issue + ticket priority).
+        "category": primary.category.value if primary else None,
         "priority": ticket.priority.value if ticket.priority else None,
-        "assigned_team": ticket.assigned_team.value if ticket.assigned_team else None,
+        "assigned_team": ticket.primary_team.value if ticket.primary_team else None,
         "reasoning": ticket.reasoning,
+        # Ticket-level metadata.
         "confidence": ticket.confidence,
         "needs_human_review": ticket.needs_human_review,
         "engine": engine,
