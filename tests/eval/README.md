@@ -58,8 +58,8 @@ scores agree (they do see below), the improvement is real, not memorized.
 
 ```bash
 source .venv/bin/activate
-python eval/run_eval.py                       # dev set (golden_set.json)
-python eval/run_eval.py eval/test_set.json    # held-out test set
+python tests/eval/run_eval.py                       # dev set (golden_set.json)
+python tests/eval/run_eval.py eval/test_set.json    # held-out test set
 ```
 
 The local model (`qwen2.5:7b`) is not perfectly deterministic even at temperature 0,
@@ -133,13 +133,13 @@ in the same shape and re-verify by hand.
 source .venv/bin/activate
 
 # quick smoke test (first 5 tickets, 1 run each)
-python eval/run_benchmark.py --limit 5 --repeats 1
+python tests/eval/run_benchmark.py --limit 5 --repeats 1
 
 # full run (all models, 3× each)
-python eval/run_benchmark.py
+python tests/eval/run_benchmark.py
 
 # a subset of models
-python eval/run_benchmark.py --models "Qwen 7B" "GPT-4o-mini"
+python tests/eval/run_benchmark.py --models "Qwen 7B" "GPT-4o-mini"
 ```
 
 Results are written to `eval/results/<timestamp>__<gitsha>.json` and copied to

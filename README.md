@@ -284,7 +284,7 @@ Each one has a documented, reproducible behaviour full table with the *why* in *
 
 ## Prompt evaluation (the receipts)
 
-The prompt is the graded core, so we measure it like code. The 20-ticket set doubles as a labeled **golden set**; a separate **40-ticket held-out set** guards against overfitting. `eval/run_eval.py` scores per-field and exact-match accuracy.
+The prompt is the graded core, so we measure it like code. The 20-ticket set doubles as a labeled **golden set**; a separate **40-ticket held-out set** guards against overfitting. `tests/eval/run_eval.py` scores per-field and exact-match accuracy.
 
 | | v1.0 (baseline) | v1.2 (current) |
 |---|:---:|:---:|

@@ -17,8 +17,8 @@ import streamlit as st
 from ui.components import stat_cards
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_DIR = ROOT / "eval" / "results"
-RUNNER = ROOT / "eval" / "run_benchmark.py"
+RESULTS_DIR = ROOT / "tests" / "eval" / "results"
+RUNNER = ROOT / "tests" / "eval" / "run_benchmark.py"
 
 # Leaderboard columns: (payload key, header, higher-is-better?).
 _LEADERBOARD_COLS = [
@@ -51,8 +51,8 @@ def _load(path: Path) -> dict | None:
 def _no_results_notice() -> None:
     st.info(
         "No benchmark results yet. Generate them first:\n\n"
-        "```bash\npython eval/run_benchmark.py --limit 5 --repeats 1   # quick\n"
-        "python eval/run_benchmark.py                              # full\n```"
+        "```bash\npython tests/eval/run_benchmark.py --limit 5 --repeats 1   # quick\n"
+        "python tests/eval/run_benchmark.py                              # full\n```"
     )
 
 
@@ -243,7 +243,7 @@ def page_benchmarks() -> None:
             st.code(out)
         st.rerun()
     cols[1].caption(
-        "Full run: `python eval/run_benchmark.py` (all models, 3× can take a while "
+        "Full run: `python tests/eval/run_benchmark.py` (all models, 3× can take a while "
         "and, for OpenAI configs, cost money)."
     )
 

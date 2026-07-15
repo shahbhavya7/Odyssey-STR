@@ -6,9 +6,9 @@ Reuses the live routing pipeline (route_ticket_with) it does NOT fork the prompt
 does NOT write to the tickets database.
 
 Usage:
-    python eval/run_benchmark.py                       # full run, all configs, 3x
-    python eval/run_benchmark.py --limit 5 --repeats 1 # quick smoke test
-    python eval/run_benchmark.py --models "Qwen 14B" "GPT-4o-mini"
+    python tests/eval/run_benchmark.py                       # full run, all configs, 3x
+    python tests/eval/run_benchmark.py --limit 5 --repeats 1 # quick smoke test
+    python tests/eval/run_benchmark.py --models "Qwen 14B" "GPT-4o-mini"
 """
 
 from __future__ import annotations
@@ -20,21 +20,22 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent          # tests/eval
+ROOT = HERE.parent.parent                        # repo root
 sys.path.insert(0, str(ROOT))
 
 from app.config import settings  # noqa: E402
 from app.router_service import route_ticket_with  # noqa: E402
 from app.prompts import PROMPT_VERSION  # noqa: E402
-from eval.model_configs import (  # noqa: E402
+from tests.eval.model_configs import (  # noqa: E402
     MODEL_CONFIGS,
     availability_note,
     ollama_available_models,
 )
-from eval.scoring import build_summary, prediction_signature, score_one  # noqa: E402
+from tests.eval.scoring import build_summary, prediction_signature, score_one  # noqa: E402
 
-DATASET = ROOT / "eval" / "benchmark_set.json"
-RESULTS_DIR = ROOT / "eval" / "results"
+DATASET = HERE / "benchmark_set.json"
+RESULTS_DIR = HERE / "results"
 
 
 def _git_short_sha() -> str:

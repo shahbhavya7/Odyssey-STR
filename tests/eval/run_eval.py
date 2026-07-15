@@ -6,8 +6,8 @@ reports per-field accuracy, overall exact-match, a by-difficulty breakdown, a
 review-flag reliability check, and a list of every mismatch.
 
 Usage:
-    python eval/run_eval.py                       # uses eval/golden_set.json
-    python eval/run_eval.py eval/golden_set.sample.json
+    python tests/eval/run_eval.py                          # uses golden_set.json
+    python tests/eval/run_eval.py tests/eval/golden_set.sample.json
 """
 
 import json
@@ -15,7 +15,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+HERE = Path(__file__).resolve().parent          # tests/eval
+sys.path.insert(0, str(HERE.parent.parent))     # repo root, so app.* imports work
 
 from app.router_service import route_ticket  # noqa: E402
 from app.schema import Category, Priority, Team  # noqa: E402
@@ -44,10 +45,10 @@ def _load(path: Path) -> list[dict]:
 
 def main() -> None:
     """Run the golden set through the router and print a scorecard."""
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("eval/golden_set.json")
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "golden_set.json"
     if not path.exists():
         print(f"Golden set not found: {path}")
-        print("Generate one with the GPT prompt, or try eval/golden_set.sample.json")
+        print(f"Generate one with the GPT prompt, or try {HERE / 'golden_set.sample.json'}")
         sys.exit(1)
 
     items = _load(path)
