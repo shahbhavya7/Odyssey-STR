@@ -1,0 +1,69 @@
+# ===========================================================================
+# Escalio — ALL-IN-ONE image (Postgres + API + UI in one container)
+#
+# Built so the whole app runs from a SINGLE command, no compose, no setup:
+#
+#   docker run --rm -p 8501:8501 -p 8000:8000 ghcr.io/<you>/escalio:latest
+#
+# It boots in mock mode with zero config. Add a key for real AI:
+#   docker run -p 8501:8501 -p 8000:8000 -e GROQ_API_KEY=gsk-... ghcr.io/<you>/escalio:latest
+#
+# A supervisor runs three processes inside the container:
+#   postgres  ->  the database         (localhost:5432, internal)
+#   api       ->  uvicorn app.api:app  (localhost:8000)
+#   ui        ->  streamlit ui/app.py  (localhost:8501)
+#
+# NOTE: one container running several processes is a convenience build for
+# demos / easy pull. For production, prefer the multi-container docker-compose
+# setup (separate DB, API, UI). Both live in this repo.
+# ===========================================================================
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/code \
+    PIP_NO_CACHE_DIR=1 \
+    PGDATA=/var/lib/postgresql/data \
+    # The app talks to its own bundled Postgres and API over localhost.
+    DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/ticketrouter \
+    API_BASE_URL=http://localhost:8000 \
+    PROVIDER=groq
+
+# Postgres server + client, a process supervisor, and curl (healthcheck).
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql postgresql-contrib libpq5 curl supervisor \
+    && rm -rf /var/lib/apt/lists/* \
+    # Put the versioned Postgres binaries on PATH under stable names so the
+    # supervisor/entrypoint can call `postgres`, `initdb`, `pg_ctl` directly.
+    && PGBIN="$(ls -d /usr/lib/postgresql/*/bin)" \
+    && ln -sf "$PGBIN/postgres" /usr/local/bin/postgres \
+    && ln -sf "$PGBIN/initdb"   /usr/local/bin/initdb \
+    && ln -sf "$PGBIN/pg_ctl"   /usr/local/bin/pg_ctl
+
+WORKDIR /code
+
+# Install Python deps first (own layer -> fast rebuilds on code changes).
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Application code.
+COPY . .
+
+# Process supervisor config + boot script.
+COPY docker/aio/supervisord.conf /etc/supervisor/conf.d/escalio.conf
+COPY docker/aio/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# UI (8501) and API (8000). Postgres (5432) stays internal.
+EXPOSE 8000 8501
+
+# The database files live here; mount a volume to persist tickets across runs:
+#   -v escalio_pg:/var/lib/postgresql/data
+VOLUME ["/var/lib/postgresql/data"]
+
+# Container is healthy once the UI answers.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
+    CMD curl -fs http://localhost:8501/_stcore/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
