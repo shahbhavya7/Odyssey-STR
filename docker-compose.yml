@@ -1,0 +1,90 @@
+# ===========================================================================
+# Escalio — base stack (hosted LLM provider)
+#
+# This is the SIMPLE path: Postgres + API + UI, using a hosted, OpenAI-compatible
+# provider (Groq by default, or OpenAI). The user just needs one API key.
+#
+#   1. cp .env.docker.example .env
+#   2. put your key in .env  (GROQ_API_KEY=...  or set PROVIDER=openai + OPENAI_API_KEY=...)
+#   3. docker compose up
+#
+# Then open  http://localhost:8501  (UI)  and  http://localhost:8000/docs  (API).
+#
+# No key yet? It still boots — the app falls back to MOCK mode so you can click
+# around immediately, then add a key and `docker compose up -d` again.
+#
+# For a fully-local / offline model instead, add the Ollama overlay:
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
+# ===========================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ticketrouter}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Only exposed to the host for debugging; the API reaches it over the
+    # internal network as `db:5432`. Comment this out to keep it private.
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ticketrouter}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    # Build locally by default. To pull the prebuilt image instead, set
+    # ESCALIO_IMAGE (see .env.docker.example) — e.g. ghcr.io/<you>/escalio:latest
+    image: ${ESCALIO_IMAGE:-escalio:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn app.api:app --host 0.0.0.0 --port 8000
+    environment:
+      PROVIDER: ${PROVIDER:-groq}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-qwen/qwen3-32b}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      MOCK_MODE: ${MOCK_MODE:-false}
+      # Point the app at the Postgres SERVICE (not localhost) inside the network.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-ticketrouter}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  ui:
+    image: ${ESCALIO_IMAGE:-escalio:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: streamlit run ui/app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      # The UI talks to the API SERVICE over the internal network.
+      API_BASE_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:8501/_stcore/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  pgdata:

@@ -1,0 +1,70 @@
+# ===========================================================================
+# Escalio — Ollama overlay (fully local / offline LLM, no API key needed)
+#
+# Use this ON TOP of the base file so we don't duplicate the whole stack:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
+#
+# It adds a local `ollama` server, auto-pulls the model once into a named volume,
+# and flips the API over to PROVIDER=ollama. First run downloads the model
+# (a few GB) and can take a while; later runs reuse the cached volume.
+#
+# Pick a smaller model for laptops / edge devices, e.g.:
+#   OLLAMA_MODEL=qwen2.5:3b   docker compose -f docker-compose.yml -f docker-compose.ollama.yml up
+# ===========================================================================
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    # Exposed for host debugging (e.g. `curl localhost:11434`); the API uses the
+    # internal `ollama:11434` address. Comment out to keep it private.
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # GPU passthrough is optional. If you have an NVIDIA GPU + the container
+    # toolkit, uncomment the block below for much faster inference.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # One-shot: waits for the server, pulls the model, then exits (restart: no).
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - 'echo "Pulling ${OLLAMA_MODEL:-qwen2.5:7b} ..."; ollama pull "${OLLAMA_MODEL:-qwen2.5:7b}"; echo "Model ready."'
+    restart: "no"
+
+  # Re-declare `api` to flip it onto the local provider. Everything else
+  # (build, ports, db dependency) is inherited from the base file.
+  api:
+    environment:
+      PROVIDER: ollama
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:7b}
+      OLLAMA_BASE_URL: http://ollama:11434/v1
+      MOCK_MODE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+
+volumes:
+  ollama:
