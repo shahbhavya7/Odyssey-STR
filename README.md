@@ -128,7 +128,52 @@ Every ticket lands in one **category**, which routes to one owning **team**:
 
 **Priority** 🔴 High · 🟠 Medium · 🟢 Low is judged by **business impact, not tone**. An angry message about a typo is still Low; a calm "all my data vanished" is High.
 
-
+## 🚀 Run it with one command (no clone, no setup)
+ 
+The whole app — database, API, and UI — ships as a single published image on
+GitHub Container Registry. If you have [Docker Desktop](https://www.docker.com/products/docker-desktop/),
+you don't need to clone anything or install Python. Just run:
+ 
+```bash
+docker run --rm -p 8501:8501 -p 8000:8000 ghcr.io/shahbhavya7/odyssey-str:latest
+```
+ 
+Wait for the log to show `You can now view your Streamlit app`, then open
+**[http://localhost:8501](http://localhost:8501)**. That's it — the full app is
+running. It boots in a demo **mock mode** with no key required, so you can click
+around immediately. Stop it with `Ctrl + C`.
+ 
+> The two `-p` flags map the app's ports (UI `8501`, API `8000`) to your machine.
+> Keep them in the command or your browser won't be able to reach the app.
+ 
+**Run with real AI** — add your free [Groq](https://console.groq.com) key with `-e`:
+ 
+```bash
+docker run --rm -p 8501:8501 -p 8000:8000 \
+  -e GROQ_API_KEY=gsk-your-key-here \
+  ghcr.io/shahbhavya7/odyssey-str:latest
+```
+ 
+When a key is present the `falling back to mock mode` line disappears from the
+logs and routing uses the real Qwen model. (Bring your own key — never commit one.)
+ 
+**Keep your tickets between runs** — the database lives inside the container, so
+by default each run starts empty. Add a named volume to persist it:
+ 
+```bash
+docker run --rm -p 8501:8501 -p 8000:8000 \
+  -e GROQ_API_KEY=gsk-your-key-here \
+  -v escalio_pg:/var/lib/postgresql/data \
+  ghcr.io/shahbhavya7/odyssey-str:latest
+```
+ 
+The volume (`escalio_pg`) survives even though `--rm` removes the container, so
+your tickets are still there next time. On the second run the logs skip the
+"Initializing PostgreSQL data directory" step — that confirms it reused your data.
+ 
+> ℹ️ This single-container image is the easy "pull and run" build, ideal for demos
+> and quick trials. For development or production, the multi-container Docker
+> Compose setup below keeps the database, API, and UI in separate containers.
 
 ## 🐳 Quickstart with Docker (easiest recommended)
 
