@@ -3,7 +3,7 @@
 This is the single entry point the CLI, API, and UI all call. It owns the
 non-model reliability logic: guardrail pre-checks, sanitization (truncate +
 PII redaction), timing, non-English review guards, and turning any failure into
-a safe fallback dict — it NEVER raises.
+a safe fallback dict it NEVER raises.
 
 Input safety (empty-reject, length cap, PII redaction) lives in app.guardrails.
 Gibberish / not-a-ticket detection is the model's job (is_ticket=false).
@@ -167,8 +167,8 @@ def _route(
         ticket = _apply_review_guards(ticket, clean)
         return _to_dict(ticket, raw_text, engine, elapsed_ms(), None)
     except LLMError as err:
-        # A dead model must not discard a real ticket — escalate to a human.
-        fallback = safe_fallback("Routing engine unavailable — escalated to a human.")
+        # A dead model must not discard a real ticket escalate to a human.
+        fallback = safe_fallback("Routing engine unavailable escalated to a human.")
         return _to_dict(fallback, raw_text, "fallback", elapsed_ms(), str(err))
 
 

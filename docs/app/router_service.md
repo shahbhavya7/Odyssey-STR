@@ -1,4 +1,4 @@
-# `router_service.py` — the one front door, and it never crashes
+# `router_service.py` the one front door, and it never crashes
 
 **In plain words:** this is the single function everything else calls to route a ticket:
 `route_ticket(text)`. It wraps the model call with all the *non-model* safety work —
@@ -16,10 +16,10 @@ dictionary back.
 
 ## Module-level setup
 
-- `DetectorFactory.seed = 0` — makes language detection give the *same* answer every time
+- `DetectorFactory.seed = 0` makes language detection give the *same* answer every time
   (it's random by default; we want deterministic results).
-- `_REVIEW_CONFIDENCE_CAP = 0.4` — whenever a safety guard fires, confidence is capped here.
-- `_EMAIL_RE`, `_CARD_RE`, `_PHONE_RE` — regular expressions that recognise emails, card-like
+- `_REVIEW_CONFIDENCE_CAP = 0.4` whenever a safety guard fires, confidence is capped here.
+- `_EMAIL_RE`, `_CARD_RE`, `_PHONE_RE` regular expressions that recognise emails, card-like
   numbers, and phone-like numbers.
 
 ## `_redact_pii(text: str) -> str`
@@ -64,15 +64,15 @@ dictionary back.
   the `prompt_version`, how long it took (`processing_ms`), and any `error` string.
 - **Note:** the enum fields are turned into their plain text (`.value`) here.
 
-## `route_ticket(raw_text: str) -> dict` — *the star function*
+## `route_ticket(raw_text: str) -> dict` *the star function*
 
 - **What it does:** the full, safe routing pipeline. Never raises.
-- **Inputs:** `raw_text` — the raw customer message (anything, including empty or garbage).
+- **Inputs:** `raw_text` the raw customer message (anything, including empty or garbage).
 - **Returns:** a complete dict with category, priority, team, reasoning, confidence,
   review flag, engine, prompt_version, processing_ms, and error.
 - **Step by step:**
   1. Start a timer.
-  2. **Empty input?** Return a safe fallback immediately — never even calls the model.
+  2. **Empty input?** Return a safe fallback immediately never even calls the model.
   3. **Trim** the text to `max_input_chars`, then **redact PII**.
   4. Call `route_with_llm(...)`, apply the review guards, and return the flattened dict.
   5. If the model layer raises `LLMError`, catch it and return a safe fallback (with the

@@ -1,6 +1,6 @@
 """SQLAlchemy setup: engine, sessions, and a connectivity check.
 
-Table models come in Phase 2 — this file only wires up the plumbing.
+Table models come in Phase 2 this file only wires up the plumbing.
 """
 
 from collections.abc import Generator
@@ -73,7 +73,7 @@ def verify_db() -> tuple[bool, str]:
 
 
 def init_db() -> None:
-    """Create any missing tables. Idempotent — safe to call repeatedly.
+    """Create any missing tables. Idempotent safe to call repeatedly.
 
     Imports app.models so the ORM models are registered on Base before
     create_all runs. Never drops or alters existing tables.
@@ -87,4 +87,4 @@ if __name__ == "__main__":
     if ping_db():
         print("Database connection OK.")
     else:
-        print("Database connection FAILED — is Postgres running and DATABASE_URL correct?")
+        print("Database connection FAILED is Postgres running and DATABASE_URL correct?")

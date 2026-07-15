@@ -1,7 +1,7 @@
 """The data contract: what a triage result must look like.
 
 Enums make invalid values impossible. A ticket carries a LIST of issues (a single
-issue is just a list of length 1 — one code path). Ticket-level fields summarize
+issue is just a list of length 1 one code path). Ticket-level fields summarize
 the list: priority = the highest issue severity, primary_team = the owner of the
 most critical issue. The contract is STRICT: unknown keys are rejected, and a
 self-contradictory result (e.g. priority not matching the issues) fails validation,

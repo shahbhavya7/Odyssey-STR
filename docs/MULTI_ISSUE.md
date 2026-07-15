@@ -5,10 +5,10 @@
 Before, Escalio assumed each support message was about **one** thing. But real customers
 write things like *"I can't log in **and** I was double-charged."* That's **two** separate
 problems for **two** different teams. The old version picked one and mentioned the other
-in a sentence — the second problem could quietly fall through the cracks.
+in a sentence the second problem could quietly fall through the cracks.
 
 Now Escalio reads a message, finds **every distinct problem** in it, and tags each one
-with its own category, team, and urgency — while still giving the whole ticket **one**
+with its own category, team, and urgency while still giving the whole ticket **one**
 urgency level and **one** clearly accountable owner. Nothing gets dropped.
 
 Why it matters: support tickets in the real world are messy and bundled. Routing each
@@ -23,11 +23,11 @@ Think of a ticket like a **sticky note with a few to-do items** on it:
   category + team + a one-line reason).
 - The whole note gets **one urgency** = the urgency of its **most urgent** item. (A note
   with a "High" item and a "Low" item is a **High** note.)
-- The whole note gets **one owner** = the team that owns that most-urgent item — the
+- The whole note gets **one owner** = the team that owns that most-urgent item the
   **primary team**. That's the "if it slips, who do we ask?" person.
 - We still tell **every** team that has something to do (the "routes to" list).
 
-A **single-issue** ticket is just a note with **one** to-do. Same machinery — a list that
+A **single-issue** ticket is just a note with **one** to-do. Same machinery a list that
 happens to have one item. There is no separate "single vs multi" code path; that keeps
 things simple and bug-free.
 
@@ -36,7 +36,7 @@ Two rules that keep it sensible:
   that's still **one** issue, not three. (This is the most common mistake, so the prompt
   is strict about it.)
 - **Soft cap of 5.** We pull out up to 5 distinct issues. If a message somehow has more,
-  we fold the extras into the closest issue and flag the ticket "needs a human" — we never
+  we fold the extras into the closest issue and flag the ticket "needs a human" we never
   silently throw an issue away.
 
 ## c) Every file we changed, in plain words
@@ -56,7 +56,7 @@ Two rules that keep it sensible:
 | `docs/TEST_CASES.md`, `docs/EDGE_CASES.md` | A copy-paste test matrix, and the edge-case table updated. |
 
 **Important:** the *old* columns (`category`, `priority`, `assigned_team`, `reasoning`)
-didn't go away — they now hold the **primary** issue's info + the ticket urgency. That's a
+didn't go away they now hold the **primary** issue's info + the ticket urgency. That's a
 deliberate trick so all the existing screens, filters, and queries keep working with no
 changes. The new columns simply add the fuller picture beside them.
 
@@ -92,7 +92,7 @@ We store a **flat primary + a JSON list**:
   team filtering is a simple `ILIKE`), `primary_team`, `primary_issue_index`.
 
 **What I'd do differently in production:** a normalized `ticket_issues` table (one row per
-issue, linked to `tickets`) instead of a JSON blob — it makes per-issue reporting and
+issue, linked to `tickets`) instead of a JSON blob it makes per-issue reporting and
 per-team SLAs a clean `JOIN` rather than digging inside JSON. I kept the JSON approach here
 because it's additive, needs no migration framework, and is right-sized for a two-week
 project. The production-correct version travels with **Alembic** migrations.
@@ -116,7 +116,7 @@ python cli.py "Your site is DOWN. It won't load. Nothing works!!!"
 
 In the UI: route the two-problem message on **Route a Ticket** → you'll see the
 "Routes to: …" header, the primary-owner banner, and both issues listed. Then go to
-**Browse & Search** and filter by each of the two teams — the same ticket shows up under
+**Browse & Search** and filter by each of the two teams the same ticket shows up under
 both. The full copy-paste test matrix is in [TEST_CASES.md](TEST_CASES.md).
 
 ### One-time database step (existing databases only)
@@ -136,7 +136,7 @@ The production-correct answer is a versioned **Alembic** migration.
 
 ## h) Words you'll hear (mini glossary)
 
-- **Issue:** one distinct problem inside a ticket — has its own category, team, urgency,
+- **Issue:** one distinct problem inside a ticket has its own category, team, urgency,
   and one-line reason.
 - **Ticket-level priority:** the single urgency for the whole ticket = the **highest** of
   its issues' urgencies.
@@ -144,7 +144,7 @@ The production-correct answer is a versioned **Alembic** migration.
   the "who's accountable" answer.
 - **all_teams / "routes to":** every team the ticket touches (a 2-team ticket lists both).
 - **Over-splitting:** wrongly turning one complaint (said several ways) into several
-  issues — the mistake we guard against.
+  issues the mistake we guard against.
 - **Soft cap:** the limit of 5 issues; extras are folded in, never dropped, and the ticket
   is flagged for a human.
 - **JSON column:** a database column that stores a whole list/object (here, the issues

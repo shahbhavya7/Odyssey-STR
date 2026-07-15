@@ -1,7 +1,7 @@
 """Data-access layer: save / get / list tickets through the ORM.
 
 Every function takes a Session as its first argument so the caller owns the
-transaction. Uses the ORM exclusively — no raw SQL string building — which
+transaction. Uses the ORM exclusively no raw SQL string building which
 parameterizes all queries and keeps us safe from SQL injection.
 """
 
@@ -125,7 +125,7 @@ def route_and_save(db: Session, raw_text: str) -> dict:
     """
     result = route_ticket(raw_text)
 
-    # Not a real support request — show it, but never store it.
+    # Not a real support request show it, but never store it.
     if not result["is_ticket"]:
         return {**result, "stored": False, "duplicate": False, "id": None}
 

@@ -1,4 +1,4 @@
-"""Escalio — Streamlit UI.
+"""Escalio Streamlit UI.
 
 A thin dining room over the API kitchen: this app only calls the HTTP API and
 renders the results. It never touches the database or the routing logic directly.
@@ -156,7 +156,7 @@ def _summary_strip(results: list[dict]) -> None:
 
 
 def _team_distribution(results: list[dict]) -> None:
-    """Show how many tickets touch each team — a 2-team ticket counts for BOTH."""
+    """Show how many tickets touch each team a 2-team ticket counts for BOTH."""
     from collections import Counter
 
     tally: Counter[str] = Counter()
@@ -174,7 +174,7 @@ def _team_distribution(results: list[dict]) -> None:
 
 
 def page_batch() -> None:
-    """Route many tickets at once — the effortless 20-ticket demo."""
+    """Route many tickets at once the effortless 20-ticket demo."""
     st.subheader("Batch Demo")
     st.caption(
         "Paste one ticket per line, or upload a .txt / .csv. "

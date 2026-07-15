@@ -1,6 +1,6 @@
 """Provider-agnostic LLM client with retry, repair, and a mock fallback.
 
-Both Ollama and OpenAI are driven through the same `openai` SDK — Ollama exposes
+Both Ollama and OpenAI are driven through the same `openai` SDK Ollama exposes
 an OpenAI-compatible endpoint, so there is a single code path. The only reliability
 logic that talks to a model lives here.
 """
@@ -42,14 +42,14 @@ def _make_client_for(provider: str, api_key: str | None = None) -> OpenAI:
     if provider == "groq":
         key = api_key or settings.groq_api_key
         if not key:
-            raise LLMError("Groq API key missing — set GROQ_API_KEY in .env.")
+            raise LLMError("Groq API key missing set GROQ_API_KEY in .env.")
         return OpenAI(base_url=settings.groq_base_url, api_key=key)
     if provider == "ollama":
         # Ollama ignores the key but the SDK requires a non-empty string.
         return OpenAI(base_url=settings.ollama_base_url, api_key="ollama")
     key = api_key or settings.openai_api_key
     if not key:
-        raise LLMError("OpenAI API key missing — set OPENAI_API_KEY in .env.")
+        raise LLMError("OpenAI API key missing set OPENAI_API_KEY in .env.")
     return OpenAI(api_key=key)
 
 
@@ -195,9 +195,9 @@ _MOCK_RULES: list[tuple[tuple[str, ...], Category, Priority, Team]] = [
 def _mock_route(ticket_text: str) -> TriageResult:
     """Deterministic keyword router used when no model is available.
 
-    Not smart — just enough to keep the whole app runnable offline. Extremely short
+    Not smart just enough to keep the whole app runnable offline. Extremely short
     input is treated as a non-ticket; ambiguous or unmatched input is flagged for
-    review. (Real gibberish detection is the live model's job — see app/prompts.py.)
+    review. (Real gibberish detection is the live model's job see app/prompts.py.)
     """
     text = ticket_text.lower()
     if len(ticket_text.strip()) < 3:
@@ -213,11 +213,11 @@ def _mock_route(ticket_text: str) -> TriageResult:
     if len(stripped.split()) <= 4 and first in _MOCK_GREETINGS:
         return TriageResult(
             is_ticket=False,
-            reasoning="Hello! Happy to help — tell us what you need and we'll route it.",
+            reasoning="Hello! Happy to help tell us what you need and we'll route it.",
             confidence=0.0,
             needs_human_review=False,
         )
-    # Single-issue result. (The mock never splits — real multi-issue is the model's job.)
+    # Single-issue result. (The mock never splits real multi-issue is the model's job.)
     for keywords, category, priority, team in _MOCK_RULES:
         if any(kw in text for kw in keywords):
             return _single_issue(category, priority, team,

@@ -1,17 +1,17 @@
 """Streamlit "Benchmarks" page: read a benchmark results file and visualize it.
 
-Reading only — running models happens in eval/run_benchmark.py (there's a small
+Reading only running models happens in eval/run_benchmark.py (there's a small
 smoke-test button that shells out to it). Degrades gracefully when no results exist.
 """
 
 from __future__ import annotations
 
+import html
 import json
 import subprocess
 import sys
 from pathlib import Path
 
-import pandas as pd
 import streamlit as st
 
 from ui.components import stat_cards
@@ -68,41 +68,83 @@ def _run_smoke_test() -> tuple[bool, str]:
         return False, f"{type(err).__name__}: {err}"
 
 
-def _leaderboard_df(summary: dict, configs: list[dict]) -> pd.DataFrame:
+# --- HTML renderers (no pandas / no Arrow avoids the pyarrow rerun segfault) ---
+
+_HILITE = "background:rgba(182,92,255,0.30);border-radius:6px;"
+_CELL = "padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:0.9rem;"
+_HEAD = ("padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.18);"
+         "font-size:0.72rem;font-weight:700;text-transform:uppercase;color:#B4A9C4;text-align:right;")
+
+
+def _html_table(headers: list[str], rows: list[list[str]], best_cols: dict[int, int]) -> str:
+    """Return an HTML table. best_cols maps column index -> row index to highlight."""
+    ths = f"<th style='{_HEAD}text-align:left;'>{html.escape(headers[0])}</th>" + "".join(
+        f"<th style='{_HEAD}'>{html.escape(h)}</th>" for h in headers[1:]
+    )
+    trs = ""
+    for r_idx, row in enumerate(rows):
+        tds = f"<td style='{_CELL}color:#F5F0FB;font-weight:600;'>{html.escape(str(row[0]))}</td>"
+        for c_idx, val in enumerate(row[1:], start=1):
+            hi = _HILITE if best_cols.get(c_idx) == r_idx else ""
+            tds += (f"<td style='{_CELL}text-align:right;font-variant-numeric:tabular-nums;"
+                    f"color:#DDE1EA;'><span style='{hi}padding:2px 6px;'>{html.escape(str(val))}</span></td>")
+        trs += f"<tr>{tds}</tr>"
+    return (
+        f"<div style='overflow-x:auto;'><table style='width:100%;border-collapse:collapse;'>"
+        f"<thead><tr>{ths}</tr></thead><tbody>{trs}</tbody></table></div>"
+    )
+
+
+def _leaderboard_rows(summary: dict, configs: list[dict]) -> list[dict]:
     rows = []
     for cfg in configs:
         s = summary.get("per_model", {}).get(cfg["name"], {})
-        if not s or s.get("n", 0) == 0:
-            continue
-        rows.append({"Model": cfg["name"], **{h: s.get(k, 0) for k, h, _ in _LEADERBOARD_COLS}})
-    return pd.DataFrame(rows)
+        if s and s.get("n", 0) > 0:
+            rows.append({"name": cfg["name"], **{k: s.get(k, 0) for k, _, _ in _LEADERBOARD_COLS}})
+    return rows
 
 
-def _render_leaderboard(df: pd.DataFrame) -> None:
+def _render_leaderboard(rows: list[dict]) -> None:
     st.markdown("#### Leaderboard")
-    if df.empty:
+    if not rows:
         st.warning("No model produced results in this run.")
         return
-    styler = df.style.format({h: "{:.1f}" for _, h, hib in _LEADERBOARD_COLS if h != "Avg ms"})
-    styler = styler.format({"Avg ms": "{:.0f}"})
-    # Highlight the best cell per column (max for accuracy, min for latency).
-    for _, header, higher_is_better in _LEADERBOARD_COLS:
-        if len(df) > 1 and header in df.columns:
-            if higher_is_better:
-                styler = styler.highlight_max(subset=[header], color="rgba(182,92,255,0.35)")
-            else:
-                styler = styler.highlight_min(subset=[header], color="rgba(182,92,255,0.35)")
-    st.dataframe(styler, width="stretch", hide_index=True)
+    headers = ["Model"] + [h for _, h, _ in _LEADERBOARD_COLS]
+    best_cols: dict[int, int] = {}
+    for c_idx, (key, _, higher) in enumerate(_LEADERBOARD_COLS, start=1):
+        if len(rows) > 1:
+            vals = [r[key] for r in rows]
+            best = (max if higher else min)(vals)
+            best_cols[c_idx] = vals.index(best)
+    table_rows = [
+        [r["name"]] + [
+            f"{r[key]:.0f}" if key == "avg_latency_ms" else f"{r[key]:.1f}"
+            for key, _, _ in _LEADERBOARD_COLS
+        ]
+        for r in rows
+    ]
+    st.markdown(_html_table(headers, table_rows, best_cols), unsafe_allow_html=True)
 
 
-def _render_bar_chart(df: pd.DataFrame) -> None:
-    st.markdown("#### Accuracy by metric")
-    if df.empty:
+def _render_bar_chart(rows: list[dict]) -> None:
+    st.markdown("#### Exact-match accuracy")
+    if not rows:
         return
-    metric_cols = ["Exact %", "Category %", "Team %", "Priority %", "Review %"]
-    chart_df = df.set_index("Model")[metric_cols]
-    # Transpose so metrics are on the x-axis and each model is a colored series.
-    st.bar_chart(chart_df.T, width="stretch")
+    hues = ["#B65CFF", "#E85BC6", "#34E0A1", "#F5A524", "#FF8FA3", "#37CBB0"]
+    bars = ""
+    for i, r in enumerate(sorted(rows, key=lambda x: x["exact_pct"], reverse=True)):
+        pct = max(0.0, min(100.0, float(r["exact_pct"])))
+        hue = hues[i % len(hues)]
+        bars += (
+            "<div style='margin:8px 0;'>"
+            "<div style='display:flex;justify-content:space-between;font-size:0.85rem;"
+            f"color:#B4A9C4;margin-bottom:4px;'><span>{html.escape(r['name'])}</span>"
+            f"<span style='color:{hue};font-weight:700;'>{pct:.1f}%</span></div>"
+            "<div style='background:rgba(255,255,255,0.08);border-radius:999px;height:10px;'>"
+            f"<div style='width:{pct:.1f}%;height:10px;background:{hue};border-radius:999px;"
+            f"box-shadow:0 0 10px {hue}66;'></div></div></div>"
+        )
+    st.markdown(bars, unsafe_allow_html=True)
 
 
 def _render_variance(summary: dict, configs: list[dict]) -> None:
@@ -114,35 +156,41 @@ def _render_variance(summary: dict, configs: list[dict]) -> None:
     rows = []
     for cfg in configs:
         s = summary.get("per_model", {}).get(cfg["name"], {})
-        if not s or s.get("n", 0) == 0:
-            continue
-        rows.append({
-            "Model": cfg["name"],
-            "Exact %": f"{s.get('exact_pct', 0):.1f} ± {s.get('exact_stddev', 0):.1f}",
-            "Consistency %": f"{s.get('consistency_pct', 0):.1f}",
-            "Valid JSON %": f"{s.get('valid_json_pct', 0):.1f}",
-        })
+        if s and s.get("n", 0) > 0:
+            rows.append([
+                cfg["name"],
+                f"{s.get('exact_pct', 0):.1f} ± {s.get('exact_stddev', 0):.1f}",
+                f"{s.get('consistency_pct', 0):.1f}",
+                f"{s.get('valid_json_pct', 0):.1f}",
+            ])
     if rows:
-        st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
+        st.markdown(
+            _html_table(["Model", "Exact %", "Consistency %", "Valid JSON %"], rows, {}),
+            unsafe_allow_html=True,
+        )
 
 
 def _render_breakdowns(summary: dict, configs: list[dict]) -> None:
     st.markdown("#### Where each model wins or fails")
     dim = st.radio("Break down by", ["difficulty", "tag"], horizontal=True)
     key = "by_difficulty" if dim == "difficulty" else "by_tag"
-    table: dict[str, dict[str, float]] = {}
-    for cfg in configs:
-        s = summary.get("per_model", {}).get(cfg["name"], {})
-        breakdown = s.get(key, {}) if s else {}
-        for group, vals in breakdown.items():
-            table.setdefault(group, {})[cfg["name"]] = vals.get("exact_pct", 0)
-    if not table:
+    ran = [c for c in configs if summary.get("per_model", {}).get(c["name"], {}).get("n", 0) > 0]
+    groups: set[str] = set()
+    for cfg in ran:
+        groups.update(summary["per_model"][cfg["name"]].get(key, {}).keys())
+    if not groups:
         st.caption("No breakdown available.")
         return
-    df = pd.DataFrame(table).T.sort_index()
-    df.index.name = dim
+    headers = [dim] + [c["name"] for c in ran]
+    rows = []
+    for group in sorted(groups):
+        row = [group]
+        for cfg in ran:
+            vals = summary["per_model"][cfg["name"]].get(key, {}).get(group)
+            row.append(f"{vals['exact_pct']:.1f}" if vals else "—")
+        rows.append(row)
     st.caption("Exact-match % per group (higher is better).")
-    st.dataframe(df.style.format("{:.1f}"), width="stretch")
+    st.markdown(_html_table(headers, rows, {}), unsafe_allow_html=True)
 
 
 def _render_worst_misses(payload: dict) -> None:
@@ -185,17 +233,17 @@ def page_benchmarks() -> None:
 
     # --- smoke-test button (running the full suite is via the CLI script) ---
     cols = st.columns([1, 3])
-    if cols[0].button("Run quick smoke test", help="5 tickets, 1 run — may take a minute"):
+    if cols[0].button("Run quick smoke test", help="5 tickets, 1 run may take a minute"):
         with st.spinner("Running 5-ticket smoke test… this may take a minute."):
             ok, out = _run_smoke_test()
         if ok:
-            st.success("Smoke test complete — showing the latest results.")
+            st.success("Smoke test complete showing the latest results.")
         else:
             st.error("Smoke test failed:")
             st.code(out)
         st.rerun()
     cols[1].caption(
-        "Full run: `python eval/run_benchmark.py` (all models, 3× — can take a while "
+        "Full run: `python eval/run_benchmark.py` (all models, 3× can take a while "
         "and, for OpenAI configs, cost money)."
     )
 
@@ -229,9 +277,9 @@ def page_benchmarks() -> None:
             f"{s['name']} ({s.get('reason', '')})" for s in meta["skipped"]
         ))
 
-    df = _leaderboard_df(summary, configs)
-    _render_leaderboard(df)
-    _render_bar_chart(df)
+    rows = _leaderboard_rows(summary, configs)
+    _render_leaderboard(rows)
+    _render_bar_chart(rows)
     _render_variance(summary, configs)
     _render_breakdowns(summary, configs)
     _render_worst_misses(payload)

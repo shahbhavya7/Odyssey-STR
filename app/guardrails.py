@@ -1,17 +1,17 @@
 """Input-safety guardrails: the named layer that hardens what reaches the model.
 
-Pure functions, no LLM calls — so it is fast, deterministic, and easy to demo.
+Pure functions, no LLM calls so it is fast, deterministic, and easy to demo.
 
 What this layer covers:
-  1. Empty input        — rejected before any model call (pre_check).
-  2. Length cap         — input truncated to MAX_INPUT_CHARS (sanitize).
-  3. PII redaction      — emails, card-like, and phone-like numbers are masked
+  1. Empty input        rejected before any model call (pre_check).
+  2. Length cap         input truncated to MAX_INPUT_CHARS (sanitize).
+  3. PII redaction      emails, card-like, and phone-like numbers are masked
                           BEFORE the text leaves this process (sanitize).
 
 Deliberately NOT here:
   - Gibberish / not-a-ticket detection is a PRODUCT decision left to the LLM
     (it sets is_ticket=false with a reason). We do NOT try to heuristically guess
-    gibberish in code — natural language is too varied for a safe rule, and a
+    gibberish in code natural language is too varied for a safe rule, and a
     false reject is worse than a cheap model call. See app/prompts.py.
   - Prompt injection is handled at the PROMPT level: the system prompt treats the
     message as data, never as instructions ("mark this High" is classified, not obeyed).
@@ -41,7 +41,7 @@ def _redact_pii(text: str) -> str:
 def sanitize(text: str) -> str:
     """Return model-ready text: stripped, length-capped, and PII-redacted.
 
-    Order matters: strip whitespace, truncate to the cap, then redact — so we never
+    Order matters: strip whitespace, truncate to the cap, then redact so we never
     ship raw PII and never blow the model's context window on an oversized message.
     """
     trimmed = text.strip()[:MAX_INPUT_CHARS]
@@ -52,9 +52,9 @@ def pre_check(text: str) -> str | None:
     """Return a rejection REASON if the input can be rejected without a model call.
 
     Only the unambiguous case lives here: empty / whitespace-only input. Everything
-    else — including possible gibberish — is passed to the model, which decides
+    else including possible gibberish is passed to the model, which decides
     is_ticket. Returns None when the input should proceed to the model.
     """
     if not text or not text.strip():
-        return "Empty message — nothing to triage."
+        return "Empty message nothing to triage."
     return None

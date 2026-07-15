@@ -1,7 +1,7 @@
 """AI timing: route all sample tickets and measure how fast the router is.
 
 Prefers the live API (so it exercises the full stack and persists rows), and
-falls back to calling route_ticket() directly if the API is unreachable — so
+falls back to calling route_ticket() directly if the API is unreachable so
 this always produces a number, even offline. Reports average processing_ms per
 ticket and total time, and saves data/ai_timing.json for the UI's Time Saved card.
 
@@ -85,7 +85,7 @@ def main() -> int:
     source = "api"
     per_ticket = _via_api(tickets)
     if per_ticket is None:
-        print("API not reachable — falling back to route_ticket() directly.")
+        print("API not reachable falling back to route_ticket() directly.")
         source = "service"
         try:
             per_ticket = _via_service(tickets)

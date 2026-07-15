@@ -2,9 +2,9 @@
 
 No secrets live in code: everything configurable comes through here.
 The LLM provider is switchable via one env var (PROVIDER), zero code change:
-  - "groq"   — DEFAULT. Fast hosted Qwen inference, no local server needed.
-  - "ollama" — local, free, offline (slower); great for private/benchmark use.
-  - "openai" — hosted GPT models.
+  - "groq"   DEFAULT. Fast hosted Qwen inference, no local server needed.
+  - "ollama" local, free, offline (slower); great for private/benchmark use.
+  - "openai" hosted GPT models.
 """
 
 import logging
@@ -91,6 +91,6 @@ settings = Settings()
 # Visible (non-crashing) heads-up when the default provider has no key configured.
 if settings.provider == "groq" and not settings.groq_api_key and not settings.mock_mode:
     logger.warning(
-        "No GROQ_API_KEY set — falling back to mock mode. Set PROVIDER=ollama for "
+        "No GROQ_API_KEY set falling back to mock mode. Set PROVIDER=ollama for "
         "local dev, or add a Groq key to .env."
     )

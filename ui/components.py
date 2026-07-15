@@ -1,6 +1,6 @@
 """Reusable render helpers: hero, glass badges, confidence bar, stat cards, card.
 
-Pure presentation — these take a plain dict (a TicketOut from the API) and emit
+Pure presentation these take a plain dict (a TicketOut from the API) and emit
 styled HTML via st.markdown, using the design tokens defined in ui/theme.py.
 """
 
@@ -169,7 +169,7 @@ def time_saved_panel(manual: dict | None, ai: dict | None) -> None:
         st.markdown(
             f"<div style='{_GLASS}border-radius:16px;padding:16px 18px;margin:6px 0 16px;"
             "color:#B4A9C4;font-size:0.9rem;'>"
-            "<strong style='color:#F5F0FB;'>Time Saved</strong> — not measured yet. "
+            "<strong style='color:#F5F0FB;'>Time Saved</strong> not measured yet. "
             "Run <code>python scripts/manual_baseline.py</code> and "
             "<code>python scripts/ai_timing.py</code> to populate this.</div>",
             unsafe_allow_html=True,
@@ -223,7 +223,7 @@ def _format_created_at(value: object) -> str:
 def rejected_card(ticket: dict, *, embedded: bool = False) -> None:
     """Render a non-ticket outcome: reasoning ONLY, muted, clearly not stored.
 
-    This is a normal result (not an error), so it stays on-theme and calm — no
+    This is a normal result (not an error), so it stays on-theme and calm no
     category/priority/team badges, no confidence bar, no id.
     """
     reasoning = html.escape(str(ticket.get("reasoning", "—")))
@@ -325,7 +325,7 @@ def _multi_issue_card(ticket: dict, *, embedded: bool = False) -> None:
             f"<div style='display:flex;align-items:center;gap:9px;background:{_rgba('#F5A524', 0.10)};"
             f"border:1px solid {_rgba('#F5A524', 0.30)};color:#F5A524;padding:10px 13px;"
             "border-radius:10px;margin-top:14px;font-size:0.86rem;font-weight:600;'>"
-            "&#9888; Please review — multiple or co-equal issues.</div>"
+            "&#9888; Please review multiple or co-equal issues.</div>"
         )
 
     st.markdown(
@@ -349,7 +349,7 @@ def _multi_issue_card(ticket: dict, *, embedded: bool = False) -> None:
         "<span style='color:#B65CFF;font-size:0.7rem;font-weight:700;"
         "text-transform:uppercase;letter-spacing:0.04em;'>Primary owner</span>"
         f"<span style='color:#F5F0FB;font-weight:600;'>{primary_team}</span>"
-        f"<span style='color:#776B85;font-size:0.85rem;'>— drives the "
+        f"<span style='color:#776B85;font-size:0.85rem;'>drives the "
         f"{html.escape(priority)} priority</span></div>"
         "<div style='margin-top:14px;'>"
         "<div style='color:#776B85;font-size:0.7rem;font-weight:700;text-transform:uppercase;'>"

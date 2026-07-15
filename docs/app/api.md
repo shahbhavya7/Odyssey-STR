@@ -1,8 +1,8 @@
-# `api.py` — the web server and its endpoints
+# `api.py` the web server and its endpoints
 
 **In plain words:** this is the HTTP front door. It's a thin FastAPI app: each endpoint checks
 the input, calls *one* function from the layers below, and shapes the reply. No real logic
-lives here — routing lives in `router_service`, storage in `repository`. It also makes sure
+lives here routing lives in `router_service`, storage in `repository`. It also makes sure
 that when the database is down, users get a clean error instead of a scary stack trace.
 
 **Beginner terms:**
@@ -21,14 +21,14 @@ that when the database is down, users get a clean error instead of a scary stack
 - **Note in the code:** this is deliberately permissive for local dev and should be locked
   down to specific origins in production.
 
-## `_on_startup()` — runs once when the server boots
+## `_on_startup()` runs once when the server boots
 
 - **What it does:** calls `init_db()` to create tables if needed.
-- **The clever bit:** if the database is down, it *logs a warning and starts anyway* — so the
+- **The clever bit:** if the database is down, it *logs a warning and starts anyway* so the
   `/health` endpoint still works and can report the problem, rather than the whole app
   refusing to boot.
 
-## `_db_unavailable_handler(request, exc)` — the safety net
+## `_db_unavailable_handler(request, exc)` the safety net
 
 - **What it does:** catches `OperationalError` / `InterfaceError` (a lost or failed DB
   connection) anywhere in the app and turns it into a clean **503** response with the message
@@ -43,7 +43,7 @@ that when the database is down, users get a clean error instead of a scary stack
 
 ## `POST /tickets` → `create_ticket(body, response, db)`
 
-- **What it does:** the main endpoint — route a message and save it, returning the full
+- **What it does:** the main endpoint route a message and save it, returning the full
   classified row in one call.
 - **Inputs:** a `TicketCreate` body (just `text`); the DB session is injected.
 - **What it returns:**
@@ -63,9 +63,9 @@ that when the database is down, users get a clean error instead of a scary stack
 
 - **What it does:** list recent tickets (newest first) with optional filters.
 - **Query parameters (all optional):**
-  - `limit` (1–100, default 20) and `offset` — paging.
-  - `priority`, `team`, `category`, `needs_review` — narrow the results.
-  - `q` — substring search in the message text.
+  - `limit` (1–100, default 20) and `offset` paging.
+  - `priority`, `team`, `category`, `needs_review` narrow the results.
+  - `q` substring search in the message text.
 - **Returns:** `{ "count": N, "items": [...] }`. With no parameters, you get the latest 20.
 - **Validation note:** `limit` is bounded (`ge=1, le=100`) so nobody can request a
   million rows at once.

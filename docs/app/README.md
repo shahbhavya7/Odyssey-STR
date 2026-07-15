@@ -43,7 +43,7 @@ api.py  (POST /tickets, GET /tickets, ...)  using shapes from api_schemas.py
 | 9 | `api_schemas.py` | The JSON shapes the API accepts and returns | [api_schemas.md](api_schemas.md) |
 | 10 | `api.py` | The web server and its endpoints | [api.md](api.md) |
 
-`__init__.py` is empty — it only marks `app/` as a Python package so `import app.x` works.
+`__init__.py` is empty it only marks `app/` as a Python package so `import app.x` works.
 
 > **How to read a doc:** every function has a signature line like
 > `route_ticket(raw_text: str) -> dict`. The words after `:` are the *type* of each input,

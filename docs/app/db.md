@@ -1,7 +1,7 @@
-# `db.py` — the database plumbing
+# `db.py` the database plumbing
 
 **In plain words:** this file sets up the connection to PostgreSQL. It doesn't know about
-*tickets* or any table — it just builds the pipe to the database and hands out short-lived
+*tickets* or any table it just builds the pipe to the database and hands out short-lived
 "sessions" (a session = one open conversation with the DB). Think of it as the water main;
 the actual table lives in `models.py`.
 
@@ -17,16 +17,16 @@ the actual table lives in `models.py`.
 
 - **What it is:** the one connection pool to Postgres, built from `settings.database_url`.
 - **The two options passed in:**
-  - `pool_pre_ping=True` — before reusing a connection, quickly check it's still alive
+  - `pool_pre_ping=True` before reusing a connection, quickly check it's still alive
     (stops "server closed the connection" errors after idle time).
-  - `pool_recycle=300` — throw away and remake connections older than 5 minutes.
+  - `pool_recycle=300` throw away and remake connections older than 5 minutes.
 - **Note:** SSL is set inside the URL itself, so **the same code works for local Postgres
-  and cloud Neon** — no branching.
+  and cloud Neon** no branching.
 
 ## `SessionLocal = sessionmaker(...)`
 
 - **What it is:** a factory. Call `SessionLocal()` and you get a fresh session.
-- **The settings:** `autoflush=False, autocommit=False` — nothing is written to the DB until
+- **The settings:** `autoflush=False, autocommit=False` nothing is written to the DB until
   *you* explicitly `commit()`. This keeps writes predictable.
 
 ## `class Base(DeclarativeBase)`
@@ -37,8 +37,8 @@ the actual table lives in `models.py`.
 
 ## `get_db() -> Generator[Session, ...]`
 
-- **What it does:** opens a session, hands it to whoever asked (`yield`), and — no matter
-  what happens — **always closes it** afterward (the `finally` block).
+- **What it does:** opens a session, hands it to whoever asked (`yield`), and no matter
+  what happens **always closes it** afterward (the `finally` block).
 - **Where it's used:** FastAPI calls this for every web request via `Depends(get_db)`, so
   each request gets its own session and no connection ever leaks.
 - **The `yield` bit:** this is a generator. It gives out the session, pauses, and resumes to
@@ -54,7 +54,7 @@ the actual table lives in `models.py`.
 
 - **What it does:** creates any tables that don't exist yet. Safe to run every startup
   (it never drops or changes existing tables).
-- **The sneaky important line:** `import app.models` — importing the models file is what
+- **The sneaky important line:** `import app.models` importing the models file is what
   *registers* the `Ticket` table on `Base` so `create_all` actually knows to make it.
 
 ## `if __name__ == "__main__":` block

@@ -2,7 +2,7 @@
 
 Endpoints validate input, call one repository function, and shape the response.
 All real logic lives in the layers below (router_service, repository). The DB
-session is injected via Depends(get_db) — endpoints never open their own session.
+session is injected via Depends(get_db) endpoints never open their own session.
 """
 
 import logging
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
             logger.warning("init_db() failed after connect: %s", exc)
     else:
         logger.warning(
-            "⚠️ Database unavailable at startup: %s — API starting anyway; "
+            "⚠️ Database unavailable at startup: %s API starting anyway; "
             "/health will report db down.",
             reason,
         )
@@ -104,11 +104,11 @@ def create_ticket(
 
     The LLM failing needs no special handling: route_ticket() returns a valid
     fallback ticket (flagged for review), which is stored with 201. Only a DB
-    failure escalates (to the 503 handler above) — never a stack trace.
+    failure escalates (to the 503 handler above) never a stack trace.
     """
     outcome = route_and_save(db, body.text)
     if not (outcome["stored"] and not outcome["duplicate"]):
-        response.status_code = 200  # rejected or duplicate — nothing new created
+        response.status_code = 200  # rejected or duplicate nothing new created
     return outcome
 
 

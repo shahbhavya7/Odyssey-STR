@@ -14,10 +14,10 @@ from app.repository import get_ticket, list_tickets, route_and_save
 def main() -> None:
     """Route and save a ticket, read it back, and list recent rows."""
     if not ping_db():
-        print("DB not reachable — is Postgres running and is DATABASE_URL correct?")
+        print("DB not reachable is Postgres running and is DATABASE_URL correct?")
         sys.exit(1)
 
-    print("Step 1: init_db() — create tables if missing ...")
+    print("Step 1: init_db() create tables if missing ...")
     init_db()
 
     print("Step 2: open a session ...")
@@ -35,7 +35,7 @@ def main() -> None:
         assert fetched is not None, "get_ticket returned None for a just-saved id"
         assert fetched.id == ticket_id
         assert fetched.category == outcome["category"]
-        print(f"  fetched id {fetched.id} — matches saved row ✔")
+        print(f"  fetched id {fetched.id} matches saved row ✔")
 
         print("Step 5: list recent tickets (newest first) ...")
         rows = list_tickets(db, limit=5)

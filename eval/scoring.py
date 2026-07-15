@@ -2,7 +2,7 @@
 
 Multi-issue tickets are scored by the **set** of (category) and (team) across issues,
 so order doesn't matter and a single-issue ticket is just a one-element set. Everything
-here is pure functions over plain dicts — no model calls, no DB.
+here is pure functions over plain dicts no model calls, no DB.
 """
 
 from __future__ import annotations

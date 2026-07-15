@@ -1,8 +1,8 @@
-# `models.py` — the `tickets` database table
+# `models.py` the `tickets` database table
 
 **In plain words:** this file describes one database table, `tickets`, as a Python class.
 One saved ticket = one row = one `Ticket` object. Because we describe the table in Python
-(an "ORM model"), we never write raw SQL by hand — SQLAlchemy generates safe queries for us.
+(an "ORM model"), we never write raw SQL by hand SQLAlchemy generates safe queries for us.
 
 **Beginner terms:**
 - **ORM model** = a Python class that maps to a database table; its attributes are columns.
@@ -37,7 +37,7 @@ One saved ticket = one row = one `Ticket` object. Because we describe the table 
 | `created_at` | timestamp | no | When the row was made (filled by the DB). |
 
 - **`created_at` detail:** `server_default=func.now()` means the *database* stamps the time,
-  not Python — reliable and consistent.
+  not Python reliable and consistent.
 - **`human_verdict` detail:** unused today, but including it now avoids a database migration
   later when the human-review loop is built. Cheap foresight.
 
@@ -46,4 +46,4 @@ One saved ticket = one row = one `Ticket` object. Because we describe the table 
 - **What it does:** turns a `Ticket` row into a plain dictionary that can be sent as JSON.
 - **Returns:** every column as a key. `created_at` is converted to a readable ISO text string
   (`"2026-07-14T..."`) instead of a raw datetime object.
-- **Why it matters:** the API and UI want JSON, not database objects — this is the bridge.
+- **Why it matters:** the API and UI want JSON, not database objects this is the bridge.

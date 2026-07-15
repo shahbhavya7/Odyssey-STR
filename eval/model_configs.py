@@ -4,14 +4,14 @@ Edit MODEL_CONFIGS to add/remove models. Each entry:
     {"name": <label>, "provider": "ollama"|"openai", "model": <exact model id>}
 
 For Ollama, `model` must match a tag you have pulled (`ollama list`). For OpenAI,
-the key comes from .env (OPENAI_API_KEY) — never hard-code it here.
+the key comes from .env (OPENAI_API_KEY) never hard-code it here.
 """
 
 from __future__ import annotations
 
 # ---- EDIT ME: the models to benchmark ---------------------------------------
 # Groq (the app's DEFAULT provider) is first. The Ollama Qwen entries are kept on
-# purpose — hosted-vs-local latency for the same model family is one of the most
+# purpose hosted-vs-local latency for the same model family is one of the most
 # interesting comparisons. Configs you can't reach (no key / not pulled) are cleanly
 # skipped, not errored.
 MODEL_CONFIGS: list[dict[str, str]] = [
@@ -28,7 +28,7 @@ MODEL_CONFIGS: list[dict[str, str]] = [
 def ollama_available_models(base_url: str) -> set[str]:
     """Return the set of model tags Ollama has pulled, or empty set on any error.
 
-    Uses Ollama's native /api/tags endpoint. Never raises — a missing/here-down
+    Uses Ollama's native /api/tags endpoint. Never raises a missing/here-down
     Ollama just yields an empty set, and the runner reports the config as skipped.
     """
     import requests  # local import so importing this module stays dependency-light
@@ -57,7 +57,7 @@ def availability_note(
     - Groq / OpenAI configs need a key (else "skipped: no API key").
     - Ollama configs should match a pulled tag; if we could list tags and it's not
       there, skip with a clear "not pulled" note. If we couldn't list tags (Ollama
-      down), we still attempt — the run records failures as misses rather than
+      down), we still attempt the run records failures as misses rather than
       pre-skipping, so a transient blip doesn't silently drop a model.
     """
     if config["provider"] == "groq" and not groq_key_present:

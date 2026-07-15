@@ -1,9 +1,9 @@
-# `llm_client.py` — the part that actually talks to the model
+# `llm_client.py` the part that actually talks to the model
 
 **In plain words:** this file sends the prompt to the AI and gets an answer back. It's the
 *only* file that touches a real model. It handles everything that can go wrong with a model:
 it retries on errors, sends a "you messed up, try again" nudge if the reply isn't valid JSON,
-and — if there's no model available at all — falls back to a simple keyword guesser so the
+and if there's no model available at all falls back to a simple keyword guesser so the
 app still works offline.
 
 **Beginner terms:**
@@ -17,7 +17,7 @@ app still works offline.
 
 - **What it is:** a custom error type raised only when the model fails to give a valid answer
   after all retries. The layer above (`router_service`) catches this and returns a safe
-  fallback — so this error never reaches the user.
+  fallback so this error never reaches the user.
 
 ## `_REQUIRED_KEYS` (a tuple)
 
@@ -28,7 +28,7 @@ app still works offline.
 
 - **What it does:** builds the client object pointed at the right backend.
 - **The trick:** both Ollama and OpenAI speak the same "OpenAI API" language, so one client
-  type handles both — it just changes the URL/key. Ollama needs no real key, so a dummy
+  type handles both it just changes the URL/key. Ollama needs no real key, so a dummy
   `"ollama"` string is passed to satisfy the SDK.
 
 ## `_repair_message() -> dict`
@@ -38,10 +38,10 @@ app still works offline.
 - **When it's used:** appended to the conversation after a bad/unparseable response, right
   before the next retry.
 
-## `route_with_llm(ticket_text: str) -> tuple[RoutedTicket, str]` — *the main function*
+## `route_with_llm(ticket_text: str) -> tuple[RoutedTicket, str]` *the main function*
 
 - **What it does:** sends the ticket to the model and returns a validated result.
-- **Returns:** a pair — `(RoutedTicket, engine_name)` where engine_name is like
+- **Returns:** a pair `(RoutedTicket, engine_name)` where engine_name is like
   `"openai:gpt-4o-mini"` or `"mock"`.
 - **Step by step:**
   1. If mock mode is on → skip the model, return `_mock_route(...)` tagged `"mock"`.
@@ -69,7 +69,7 @@ app still works offline.
 - **What it does:** lowercases the text and checks each rule in order; the first keyword hit
   decides the answer. If nothing matches → General / Low / Customer Support, flagged for
   review.
-- **Honest limitation (stated in the code):** it's "not smart — just enough to keep the app
+- **Honest limitation (stated in the code):** it's "not smart just enough to keep the app
   runnable offline." Confidence is deliberately modest (0.3–0.5).
 
 ## `__all__ = [...]`

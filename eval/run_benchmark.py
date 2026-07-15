@@ -2,7 +2,7 @@
 
 Runs each model config over every ticket REPEATS times (for variance), scores each
 prediction, and writes a timestamped results file plus results/latest.json for the UI.
-Reuses the live routing pipeline (route_ticket_with) — it does NOT fork the prompt and
+Reuses the live routing pipeline (route_ticket_with) it does NOT fork the prompt and
 does NOT write to the tickets database.
 
 Usage:

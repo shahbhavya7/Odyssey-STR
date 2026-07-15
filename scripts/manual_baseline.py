@@ -2,7 +2,7 @@
 
 Run this once, honestly, with the sample tickets. It shows each ticket, waits
 for you to type category + team + priority, and times how long you take. The
-result is a *defensible* manual number for the before/after comparison — not a
+result is a *defensible* manual number for the before/after comparison not a
 guess. Nothing here calls the model or the database.
 
 Usage:
@@ -76,11 +76,11 @@ def main() -> int:
     try:
         total, done = run_exercise(tickets)
     except (KeyboardInterrupt, EOFError):
-        print("\nInterrupted — nothing saved.")
+        print("\nInterrupted nothing saved.")
         return 1
 
     if done == 0:
-        print("No tickets timed — nothing saved.")
+        print("No tickets timed nothing saved.")
         return 1
 
     avg = total / done

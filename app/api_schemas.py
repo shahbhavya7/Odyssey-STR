@@ -58,10 +58,10 @@ class TicketOut(BaseModel):
 
 
 class TriageOut(BaseModel):
-    """Response for POST /tickets — covers BOTH a stored ticket and a rejection.
+    """Response for POST /tickets covers BOTH a stored ticket and a rejection.
 
     A non-ticket (gibberish) is returned with stored=false, is_ticket=false, and null
-    routing fields — the UI renders reasoning only and nothing is written to the DB.
+    routing fields the UI renders reasoning only and nothing is written to the DB.
     """
 
     stored: bool = Field(description="True when a row was created/matched in the DB.")

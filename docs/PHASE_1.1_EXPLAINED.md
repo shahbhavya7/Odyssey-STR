@@ -6,7 +6,7 @@ Up to now we *believed* our prompt was good. In this phase we made it **provable
 We built a small "exam" for the router: a list of support tickets where we already
 know the correct answer, plus a script that feeds each one to our system and marks it
 right or wrong. That turns a vague claim ("the routing is good") into a real number
-("80% correct"). Then we used that number to actually *improve* the prompt — twice —
+("80% correct"). Then we used that number to actually *improve* the prompt twice —
 and to add one deterministic safety rule in code. The whole point is honest, measurable
 progress instead of guessing.
 
@@ -17,11 +17,11 @@ a graded mock exam, see exactly which questions we miss, fix those, and re-sit i
 
 | File | What it's for (one line) |
 |------|--------------------------|
-| `eval/golden_set.json` | The **dev exam** — 30 tickets with known-correct answers, used to *practise and tune* the prompt. |
-| `eval/test_set.json` | The **final exam** — 40 fresh tickets the prompt never trained on, used to measure honestly. |
+| `eval/golden_set.json` | The **dev exam** 30 tickets with known-correct answers, used to *practise and tune* the prompt. |
+| `eval/test_set.json` | The **final exam** 40 fresh tickets the prompt never trained on, used to measure honestly. |
 | `eval/golden_set.sample.json` | A 3-ticket mini-exam for a quick sanity check. |
-| `eval/run_eval.py` | The **grader** — runs every ticket through the router and scores the answers. |
-| `eval/README.md` | The lab manual — how the exam works and the latest scores. |
+| `eval/run_eval.py` | The **grader** runs every ticket through the router and scores the answers. |
+| `eval/README.md` | The lab manual how the exam works and the latest scores. |
 | `app/prompts.py` (updated) | The prompt, improved from v1.1 to **v1.2** based on what the exam revealed. |
 | `app/router_service.py` (updated) | Added a **non-English safety rule** that always flags foreign-language tickets for a human. |
 | `requirements.txt` (updated) | Added `langdetect`, the tool that spots what language a message is in. |
@@ -32,9 +32,9 @@ a graded mock exam, see exactly which questions we miss, fix those, and re-sit i
 
 - **What it is:** A list of tickets, each paired with the *correct* routing (category,
   priority, team, and whether a human should review it). This correct answer is called
-  a **label**, and a fully-labeled list is a **golden set** — the answer key for our exam.
+  a **label**, and a fully-labeled list is a **golden set** the answer key for our exam.
 - **Why two sets:** Once you tweak the prompt to do well on a set of questions, that
-  set's score is no longer honest — you've *memorised* it. So we keep two: a **dev set**
+  set's score is no longer honest you've *memorised* it. So we keep two: a **dev set**
   to practise on, and a separate **held-out test set** the prompt never sees while
   tuning. If both score about the same, the improvement is real, not memorised. (Ours
   did: ~77% on dev, 80% on the held-out test.)
@@ -84,7 +84,7 @@ The exam exposed three real weaknesses. We fixed each in the prompt:
 ### The safety net in code (`app/router_service.py`)
 
 Even after the prompt fix, a small local model can't be *trusted* to always flag foreign
-languages. So we stopped asking nicely and enforced it in code — this is our reliability
+languages. So we stopped asking nicely and enforced it in code this is our reliability
 layer, where "never trust the model blindly" rules live.
 
 **`_is_non_english(text)`**
@@ -116,7 +116,7 @@ layer, where "never trust the model blindly" rules live.
 ## e) Words you'll hear (mini glossary)
 
 - **Golden set / labeled data:** a list of examples paired with their known-correct
-  answers — the answer key for the exam.
+  answers the answer key for the exam.
 - **Label:** the correct answer attached to one example.
 - **Dev set vs test set:** the practice exam you tune against vs the fresh, held-back exam
   you measure with. Keeping them separate keeps the score honest.
@@ -124,11 +124,11 @@ layer, where "never trust the model blindly" rules live.
   unbiased score.
 - **Overfitting:** doing well on the exact questions you practised but worse on new ones —
   memorising instead of learning. The test set is how we detect it.
-- **Exact-match:** the strictest score — all four fields correct on one ticket.
+- **Exact-match:** the strictest score all four fields correct on one ticket.
 - **Few-shot example:** a solved practice question included in the prompt to teach a tricky
   case by demonstration.
 - **langdetect:** a small library that guesses which language a piece of text is written in.
 - **Guard / reliability rule:** a check in our own code (not the AI) that enforces safe
   behaviour no matter what the model returns.
-- **Deterministic:** always gives the same result for the same input — unlike the AI, which
+- **Deterministic:** always gives the same result for the same input unlike the AI, which
   can wobble slightly between runs.

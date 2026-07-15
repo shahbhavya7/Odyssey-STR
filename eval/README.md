@@ -9,7 +9,7 @@ scored field-by-field. This is how we measure a prompt change instead of guessin
 | File | What it is |
 |------|------------|
 | `run_eval.py` | The scorer. Loads a labeled set, runs each ticket through `route_ticket()`, prints per-field accuracy, overall exact-match, a by-difficulty breakdown, review-flag reliability, and every mismatch. |
-| `golden_set.json` | **Dev set** (30 tickets, `G01–G30`). Used to *tune* the prompt — v1.2 was iterated against it, so its score is optimistic. |
+| `golden_set.json` | **Dev set** (30 tickets, `G01–G30`). Used to *tune* the prompt v1.2 was iterated against it, so its score is optimistic. |
 | `test_set.json` | **Held-out test set** (40 tickets, `H01–H40`). Never used for tuning, so its score is the honest measure of generalization. |
 | `golden_set.sample.json` | A tiny 3-ticket sample for a quick smoke-run. |
 
@@ -34,7 +34,7 @@ the **ticket-level** priority and the **primary** issue's category/team (the fla
 back-compat fields), which keeps the existing golden/test sets valid unchanged.
 
 To score multi-issue *extraction* itself, compare the **set** of `(category, team)`
-pairs the model produced against an expected set — order-independent, so
+pairs the model produced against an expected set order-independent, so
 `{(Billing, Billing Team), (Account & Access, Account Management)}` matches regardless
 of which issue came first. The multi-issue tickets in `data/sample_tickets.csv`
 (ids 21–23) are the seed for this; their expected sets are:
@@ -49,10 +49,10 @@ A future `run_eval.py` flag can load these and report set precision/recall per t
 
 ## Why a dev/test split
 
-Once you tune a prompt against a set, that set's score is no longer honest — you've
+Once you tune a prompt against a set, that set's score is no longer honest you've
 fitted to it. So we keep two sets: iterate against the **dev** set, and report the
 number from the **held-out test** set, which the prompt has never seen. When the two
-scores agree (they do — see below), the improvement is real, not memorized.
+scores agree (they do see below), the improvement is real, not memorized.
 
 ## Run it
 
@@ -76,13 +76,13 @@ Prompt iteration, scored on the dev set (exact-match = all four fields correct):
 | v1.2 | churn-threat fix, priority disambiguation, data-loss, non-English few-shot | 70.0% |
 | v1.2 + guard | code-level non-English review guard in `router_service` | 76.7% |
 
-Held-out **test set** with v1.2 + guard: **80.0% exact** — category 92.5%, priority
+Held-out **test set** with v1.2 + guard: **80.0% exact** category 92.5%, priority
 95.0%, assigned_team 87.5%, needs_human_review 92.5%. The test score matching the dev
 score (~77–80%) is the signal that v1.2 generalizes rather than overfitting `G01–G30`.
 
 ## What the remaining misses are
 
-Not systematic bugs — three known, mostly-irreducible classes:
+Not systematic bugs three known, mostly-irreducible classes:
 - **Debatable labels:** security categorization (Account & Access vs Bug/Backend),
   the under-used "General / Other" bucket, and How-To vs Feature ambiguity. The
   "correct" answer is genuinely arguable.
@@ -106,7 +106,7 @@ renders a comparison view in the Streamlit **📊 Benchmarks** tab.
 
 ## 1. The dataset
 
-`eval/benchmark_set.json` — 60 hand-reviewed tickets. Each item:
+`eval/benchmark_set.json` 60 hand-reviewed tickets. Each item:
 
 ```json
 {
@@ -122,7 +122,7 @@ renders a comparison view in the Streamlit **📊 Benchmarks** tab.
 ```
 
 It is the **ground truth** (already human-reviewed): the labels encode the v1.2/v1.4
-rubric — business-impact priority, symptom-based bug sub-routing, gibberish/greeting
+rubric business-impact priority, symptom-based bug sub-routing, gibberish/greeting
 rejection, non-English review, prompt-injection resistance, and multi-issue extraction
 (single, two-, and three-issue cases, plus over-split traps). To extend it, add items
 in the same shape and re-verify by hand.
@@ -155,16 +155,16 @@ pulled are skipped with an `ollama pull …` hint.
 
 | Column | Meaning |
 |--------|---------|
-| **Exact %** | Every scored field correct — the strict "perfect routing" metric. |
+| **Exact %** | Every scored field correct the strict "perfect routing" metric. |
 | **Category % / Team %** | The **set** of issue categories / teams matches the expected set (order-independent; single-issue = plain equality). Set-based because a multi-issue ticket has several right answers, not one. |
 | **Priority %** | Ticket-level priority matches (null == null for non-tickets). |
 | **Review %** | `needs_human_review` matches. |
-| **Consistency %** | Of the 3 runs per ticket, the fraction of tickets where **all runs gave the same prediction**. Its own metric because a model can be *accurate on average but unstable* — bad for trust. |
+| **Consistency %** | Of the 3 runs per ticket, the fraction of tickets where **all runs gave the same prediction**. Its own metric because a model can be *accurate on average but unstable* bad for trust. |
 | **Valid JSON %** | Model produced schema-valid output (no fallback triggered). |
 | **Avg ms** | Mean routing latency per ticket. |
 
 The **consistency-vs-accuracy** view shows Exact % **± the run-to-run stddev**, so
-variance is visible rather than hidden behind an average — the honest way to compare.
+variance is visible rather than hidden behind an average the honest way to compare.
 
 ## 4. Why 3× + variance
 
@@ -176,7 +176,7 @@ reporting the spread separates "genuinely better" from "got a lucky draw."
 
 - **Small N** (60 tickets): treat single-digit gaps as noise; look at the stddev.
 - **Local variance:** temp-0 still wobbles ±1–2 tickets per run.
-- **OpenAI cost/latency:** the GPT configs make real API calls — the full 3× run costs
+- **OpenAI cost/latency:** the GPT configs make real API calls the full 3× run costs
   money and takes longer. Use `--limit` while iterating.
 - **Set scoring** rewards getting the right *set* of (category, team) pairs; it does not
   (yet) score per-issue reasoning quality.

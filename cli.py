@@ -23,7 +23,7 @@ def main() -> None:
         _print_result(" ".join(sys.argv[1:]))
         return
 
-    print("Escalio — type a ticket and press Enter (Ctrl+C to quit).")
+    print("Escalio type a ticket and press Enter (Ctrl+C to quit).")
     try:
         while True:
             text = input("\nticket> ")

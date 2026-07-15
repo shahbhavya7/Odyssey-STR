@@ -86,7 +86,7 @@ def _assert_valid(result: dict) -> None:
 
 
 def test_hard_inputs_always_valid() -> None:
-    """Every adversarial input yields a valid result — no exceptions."""
+    """Every adversarial input yields a valid result no exceptions."""
     for text in HARD_INPUTS:
         _assert_valid(route_ticket(text))
 
@@ -144,7 +144,7 @@ def test_issue_enum_is_enforced() -> None:
 
 
 def test_strict_rejects_unknown_key() -> None:
-    """extra='forbid' — an unexpected top-level key is a hard rejection (AC #7)."""
+    """extra='forbid' an unexpected top-level key is a hard rejection (AC #7)."""
     raised = False
     try:
         TriageResult(

@@ -51,7 +51,7 @@ html, body, [class*="css"], .stApp, [data-testid="stAppViewContainer"] {
 [data-testid="stMain"], [data-testid="stHeader"] { background:transparent; }
 .block-container { max-width:1100px; padding:2.2rem 2rem 4rem; }
 
-/* Hide only the clutter (Deploy, main menu, footer, decoration) — but KEEP the
+/* Hide only the clutter (Deploy, main menu, footer, decoration) but KEEP the
    header itself so Streamlit's sidebar toggle always stays reachable. */
 #MainMenu, [data-testid="stDecoration"],
 [data-testid="stStatusWidget"], footer {

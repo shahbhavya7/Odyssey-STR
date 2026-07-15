@@ -1,6 +1,6 @@
 """Thin HTTP client the Streamlit UI uses to talk to the API.
 
-The UI holds no business logic — it only calls these functions and renders the
+The UI holds no business logic it only calls these functions and renders the
 result. Every function raises a friendly ApiError (with a readable message) on a
 connection problem or a non-2xx response, so the UI can show a clean st.error
 instead of a traceback.
